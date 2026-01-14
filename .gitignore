@@ -1,0 +1,11 @@
+node_modules/
+.env
+logs/
+*.log
+.DS_Store
+dist/
+tmpclaude-*
+nul
+*.local
+.claude/
+API_CREDENTIALS.md

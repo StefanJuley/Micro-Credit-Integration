@@ -1,0 +1,118 @@
+.mi-widget {
+    margin: 10px 0;
+    padding: 12px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+}
+
+.mi-header {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.mi-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #1a73e8;
+    color: white;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 8px;
+}
+
+.mi-content {
+    margin-bottom: 8px;
+}
+
+.mi-info {
+    margin-bottom: 10px;
+}
+
+.mi-info p {
+    margin: 0;
+    color: #666;
+}
+
+.mi-row {
+    margin: 4px 0;
+}
+
+.mi-label {
+    color: #666;
+}
+
+.mi-value {
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.mi-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mi-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.2s, opacity 0.2s;
+}
+
+.mi-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.mi-btn-primary {
+    background: #1a73e8;
+    color: white;
+}
+
+.mi-btn-primary:hover:not(:disabled) {
+    background: #1557b0;
+}
+
+.mi-btn-secondary {
+    background: #f1f3f4;
+    color: #333;
+}
+
+.mi-btn-secondary:hover:not(:disabled) {
+    background: #e8eaed;
+}
+
+.mi-message {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.mi-success {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.mi-error {
+    background: #fce8e6;
+    color: #c5221f;
+}
