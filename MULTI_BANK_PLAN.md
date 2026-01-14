@@ -3,7 +3,7 @@
 ## Текущее состояние
 
 - Работает интеграция с Microinvest
-- Сервер: https://credit.moadip.website (VPS 195.201.19.112)
+- Сервер: https://credit.pandashop.md (VPS 195.201.19.112)
 - 1 заказ = 1 банк = 1 заявка
 
 ## Цель

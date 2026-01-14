@@ -22,9 +22,9 @@ app.use(helmet({
 const allowedOrigins = [
     'https://pandashop.simla.com',
     'https://app.simla.com',
-    'https://credit.moadip.website',
+    'https://credit.pandashop.md',
     /\.simla\.com$/,
-    /\.moadip\.website$/
+    /\.pandashop\.md$/
 ];
 
 app.use(cors({
