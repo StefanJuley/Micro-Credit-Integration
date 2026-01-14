@@ -374,7 +374,7 @@ import {
   UiToolbarButton,
 } from '@retailcrm/embed-ui-v1-components/remote';
 
-const API_BASE = 'https://api.moadip.website';
+const API_BASE = 'https://credit.moadip.website';
 
 const order = useOrder();
 const orderId = useField(order, 'id');
