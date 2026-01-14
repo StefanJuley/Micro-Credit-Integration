@@ -14,13 +14,17 @@ const app = express();
 
 app.use(helmet({
     contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false,
+    frameguard: false
 }));
 
 const allowedOrigins = [
     'https://pandashop.simla.com',
     'https://app.simla.com',
-    /\.simla\.com$/
+    'https://credit.moadip.website',
+    /\.simla\.com$/,
+    /\.moadip\.website$/
 ];
 
 app.use(cors({
@@ -44,7 +48,12 @@ app.use('/api/', limiter);
 app.use(express.json());
 app.use('/module', moduleRoutes);
 app.use('/widget', moduleRoutes);
-app.use('/static', express.static(path.join(__dirname, '../static')));
+
+app.use('/static', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, express.static(path.join(__dirname, '../static')));
 
 const simlaClient = require('./clients/simla');
 
