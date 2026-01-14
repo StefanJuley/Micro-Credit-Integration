@@ -3,14 +3,14 @@ const logger = require('../utils/logger');
 const axios = require('axios');
 const FormData = require('form-data');
 
-const MODULE_CODE = 'microinvest-credit';
+const MODULE_CODE = 'micro-credit';
 
 async function registerModule(baseUrl) {
     const moduleConfig = {
         code: MODULE_CODE,
         integrationCode: MODULE_CODE,
         active: true,
-        name: 'Microinvest Credit',
+        name: 'Micro Credit',
         logo: `${baseUrl}/static/logo.svg`,
         clientId: generateClientId(),
         baseUrl: baseUrl,

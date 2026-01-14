@@ -35,7 +35,7 @@ router.get('/settings', (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Microinvest Credit - Settings</title>
+            <title>Micro Credit - Settings</title>
             <style>
                 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }
                 .container { max-width: 600px; margin: 0 auto; }
@@ -48,12 +48,12 @@ router.get('/settings', (req, res) => {
         </head>
         <body>
             <div class="container">
-                <h1>Microinvest Credit Integration</h1>
+                <h1>Micro Credit Integration</h1>
                 <div class="status active">Module Active</div>
                 <div class="info">
                     <p><strong>Module Code:</strong> ${MODULE_CODE}</p>
                     <p><strong>Version:</strong> 1.0.0</p>
-                    <p>Module integrates credit applications with Microinvest bank.</p>
+                    <p>Module integrates credit applications with banks.</p>
                 </div>
             </div>
         </body>
