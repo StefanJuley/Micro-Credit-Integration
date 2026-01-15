@@ -74,7 +74,19 @@ class CreditService {
         }
 
         if (!orderData.idnp) {
-            throw new Error(`Order ${orderId} missing IDNP`);
+            throw new Error(`Не указан IDNP клиента`);
+        }
+
+        if (!orderData.name) {
+            throw new Error(`Не указано имя клиента`);
+        }
+
+        if (!orderData.surname) {
+            throw new Error(`Не указана фамилия клиента`);
+        }
+
+        if (!orderData.birthday) {
+            throw new Error(`Не указана дата рождения клиента`);
         }
 
         if (!orderData.payment) {
