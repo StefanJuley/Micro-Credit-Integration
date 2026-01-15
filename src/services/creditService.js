@@ -435,6 +435,7 @@ class CreditService {
                     crmStatus: orderData.payment?.status || null,
                     paymentType: orderData.payment?.type || null,
                     orderStatus: order.status || null,
+                    managerId: order.managerId || null,
                     conditionsChanged,
                     comparison,
                     createdAt: order.createdAt || null

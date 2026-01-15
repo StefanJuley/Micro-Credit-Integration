@@ -293,10 +293,8 @@
 }
 .mi-feed-controls {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
   padding: 16px 32px;
   margin: 0 -32px;
   background: #fff;
@@ -304,6 +302,12 @@
   top: 0;
   z-index: 10;
   border-bottom: 1px solid #e5e7eb;
+}
+.mi-feed-filters-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 .mi-feed-list-wrapper {
   padding: 24px 32px 16px 32px;
@@ -548,7 +552,8 @@
   align-items: center;
 }
 .mi-search-wrapper {
-  width: 150px;
+  flex: 1;
+  min-width: 200px;
 }
 .mi-link-button {
   display: inline-flex;

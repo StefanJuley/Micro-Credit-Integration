@@ -211,7 +211,7 @@
 
     <div class="mi-feed-content">
       <div class="mi-feed-controls">
-        <div class="mi-feed-filters">
+        <div class="mi-feed-filters-row">
           <select
             :value="feedStatusFilter"
             class="mi-select"
@@ -234,20 +234,30 @@
             <option value="iute-credit">Iute Credit</option>
             <option value="maib">Maib</option>
           </select>
+          <select
+            :value="feedManagerFilter"
+            class="mi-select"
+            @change="onManagerFilterChange"
+          >
+            <option value="">Все менеджеры</option>
+            <option value="my">Мои заявки</option>
+          </select>
+        </div>
+        <div class="mi-feed-filters-row">
+          <div class="mi-search-wrapper" @keydown="onSearchKeydown">
+            <UiTextbox
+              :value="feedSearchQuery"
+              placeholder="Поиск (Enter для применения)..."
+              size="sm"
+              @update:value="updateSearchQuery"
+            />
+          </div>
           <button
             class="mi-action-btn mi-action-btn-primary"
             @click="applyFilters"
           >
             Применить
           </button>
-          <div class="mi-search-wrapper">
-            <UiTextbox
-              :value="feedSearchQuery"
-              placeholder="Поиск..."
-              size="sm"
-              @update:value="updateSearchQuery"
-            />
-          </div>
           <button
             v-if="hasActiveFilters"
             class="mi-action-btn mi-action-btn-secondary"
@@ -305,15 +315,15 @@
                 </span>
               </span>
             </div>
+            <div v-if="item.orderStatus" class="mi-feed-row">
+              <span class="mi-feed-label">Статус заказа:</span>
+              <span class="mi-feed-value">{{ getOrderStatusText(item.orderStatus) }}</span>
+            </div>
             <div v-if="getSignatureStatus(item.bankStatus)" class="mi-feed-row">
               <span class="mi-feed-label">Подпись:</span>
               <span :class="['mi-feed-value', 'mi-signature-' + (item.bankStatus === 'Approved' ? 'pending' : 'done')]">
                 {{ getSignatureStatus(item.bankStatus) }}
               </span>
-            </div>
-            <div v-if="isArchiveView && item.orderStatus" class="mi-feed-row">
-              <span class="mi-feed-label">Статус заказа:</span>
-              <span class="mi-feed-value">{{ getOrderStatusText(item.orderStatus) }}</span>
             </div>
             <div v-if="!isArchiveView" class="mi-feed-row mi-feed-age-row">
               <span class="mi-feed-label">Создан:</span>
@@ -401,7 +411,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useOrderCardContext as useOrder, useField } from '@retailcrm/embed-ui';
+import { useOrderCardContext as useOrder, useCurrentUserContext, useField } from '@retailcrm/embed-ui';
 import {
   UiButton,
   UiLoader,
@@ -414,6 +424,11 @@ const API_BASE = 'https://credit.pandashop.md';
 
 const order = useOrder();
 const orderId = useField(order, 'id');
+
+const currentUser = useCurrentUserContext();
+const currentUserId = useField(currentUser, 'id');
+const currentUserFirstName = useField(currentUser, 'firstName');
+const currentUserLastName = useField(currentUser, 'lastName');
 
 const modalOpened = ref(false);
 const loading = ref(false);
@@ -446,12 +461,13 @@ const feedLoading = ref(false);
 const feedItems = ref<any[]>([]);
 const feedStatusFilter = ref('');
 const feedCompanyFilter = ref('');
+const feedManagerFilter = ref('');
 const feedSearchQuery = ref('');
 const displayedFeedItems = ref<any[]>([]);
 const hasActiveFilters = ref(false);
 const isArchiveView = ref(false);
 
-function filterFeedItems(items: any[], statusFilter: string, companyFilter: string, searchQuery: string): any[] {
+function filterFeedItems(items: any[], statusFilter: string, companyFilter: string, managerFilter: string, searchQuery: string): any[] {
   const query = searchQuery.toLowerCase().trim();
   return items.filter(item => {
     if (statusFilter) {
@@ -467,6 +483,9 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
       }
     }
     if (companyFilter && item.creditCompany !== companyFilter) {
+      return false;
+    }
+    if (managerFilter === 'my' && item.managerId !== currentUserId.value) {
       return false;
     }
     if (query) {
@@ -489,18 +508,29 @@ function onCompanyFilterChange(e: Event) {
   feedCompanyFilter.value = (e.target as HTMLSelectElement).value;
 }
 
+function onManagerFilterChange(e: Event) {
+  feedManagerFilter.value = (e.target as HTMLSelectElement).value;
+}
+
 function applyFilters() {
-  const filtered = filterFeedItems(feedItems.value, feedStatusFilter.value, feedCompanyFilter.value, feedSearchQuery.value);
+  const filtered = filterFeedItems(feedItems.value, feedStatusFilter.value, feedCompanyFilter.value, feedManagerFilter.value, feedSearchQuery.value);
   displayedFeedItems.value = [...filtered];
-  hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedSearchQuery.value !== '';
+  hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedManagerFilter.value !== '' || feedSearchQuery.value !== '';
 }
 
 function resetFilters() {
   feedStatusFilter.value = '';
   feedCompanyFilter.value = '';
+  feedManagerFilter.value = '';
   feedSearchQuery.value = '';
   displayedFeedItems.value = [...feedItems.value];
   hasActiveFilters.value = false;
+}
+
+function onSearchKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    applyFilters();
+  }
 }
 
 watch(showFeedModal, (opened) => {
@@ -868,7 +898,7 @@ async function loadFeed() {
         delivering: false
       }));
       feedItems.value = items;
-      const filtered = filterFeedItems(items, feedStatusFilter.value, feedCompanyFilter.value, feedSearchQuery.value);
+      const filtered = filterFeedItems(items, feedStatusFilter.value, feedCompanyFilter.value, feedManagerFilter.value, feedSearchQuery.value);
       displayedFeedItems.value = [...filtered];
     }
   } catch (err: any) {
@@ -882,6 +912,7 @@ function toggleArchiveView() {
   isArchiveView.value = !isArchiveView.value;
   feedStatusFilter.value = '';
   feedCompanyFilter.value = '';
+  feedManagerFilter.value = '';
   feedSearchQuery.value = '';
   hasActiveFilters.value = false;
   loadFeed();
@@ -1356,10 +1387,8 @@ async function moveToDelivering(item: any) {
 
 .mi-feed-controls {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
   padding: 16px 32px;
   margin: 0 -32px;
   background: #fff;
@@ -1367,6 +1396,13 @@ async function moveToDelivering(item: any) {
   top: 0;
   z-index: 10;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.mi-feed-filters-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .mi-feed-list-wrapper {
@@ -1662,7 +1698,8 @@ async function moveToDelivering(item: any) {
 }
 
 .mi-search-wrapper {
-  width: 150px;
+  flex: 1;
+  min-width: 200px;
 }
 
 .mi-link-button {
