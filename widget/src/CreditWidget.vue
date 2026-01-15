@@ -1727,8 +1727,15 @@ async function moveToDelivering(item: any) {
 }
 
 .mi-search-wrapper {
-  flex: 1;
-  min-width: 200px;
+  width: 325px;
+
+  > span {
+    width: 100%;
+  }
+}
+
+.mi-feed-filters-row:last-child .mi-filter-btn {
+  margin-left: auto;
 }
 
 .mi-link-button {
