@@ -903,17 +903,39 @@ function getStatusClass(status: string): string {
   return '';
 }
 
-function getDaysAgo(dateStr: string | null): number {
-  if (!dateStr) return 0;
+function getTimeAgo(dateStr: string | null): { days: number; hours: number; totalHours: number } {
+  if (!dateStr) return { days: 0, hours: 0, totalHours: 0 };
   const date = new Date(dateStr);
   const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffMs = now.getTime() - date.getTime();
+
+  if (diffMs < 0) {
+    return { days: 0, hours: 0, totalHours: 0 };
+  }
+
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  return { days, hours, totalHours };
+}
+
+function getDaysAgo(dateStr: string | null): number {
+  return getTimeAgo(dateStr).days;
 }
 
 function getDaysAgoText(dateStr: string | null): string {
-  const days = getDaysAgo(dateStr);
-  if (days === 0) return 'Сегодня';
+  const { days, totalHours } = getTimeAgo(dateStr);
+
+  if (totalHours === 0) return 'Менее часа';
+
+  if (days === 0) {
+    if (totalHours === 1) return '1 час назад';
+    if (totalHours >= 2 && totalHours <= 4) return `${totalHours} часа назад`;
+    if (totalHours >= 5 && totalHours <= 20) return `${totalHours} часов назад`;
+    return `${totalHours} час назад`;
+  }
+
   if (days === 1) return '1 день назад';
   if (days >= 2 && days <= 4) return `${days} дня назад`;
   return `${days} дней назад`;
