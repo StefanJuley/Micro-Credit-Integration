@@ -81,8 +81,16 @@ class CreditService {
             throw new Error(`Не указано имя клиента`);
         }
 
+        if (/[а-яёА-ЯЁ]/.test(orderData.name)) {
+            throw new Error(`Имя должно быть на латинице`);
+        }
+
         if (!orderData.surname) {
             throw new Error(`Не указана фамилия клиента`);
+        }
+
+        if (/[а-яёА-ЯЁ]/.test(orderData.surname)) {
+            throw new Error(`Фамилия должна быть на латинице`);
         }
 
         if (!orderData.birthday) {
