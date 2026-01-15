@@ -240,13 +240,14 @@
           >
             Применить
           </button>
-          <input
-            v-model="feedSearchQuery"
-            type="text"
-            class="mi-search-input"
-            placeholder="Поиск..."
-            @keyup.enter="applyFilters"
-          />
+          <div class="mi-search-wrapper">
+            <UiTextbox
+              :value="feedSearchQuery"
+              placeholder="Поиск..."
+              size="sm"
+              @update:value="updateSearchQuery"
+            />
+          </div>
           <button
             v-if="hasActiveFilters"
             class="mi-action-btn mi-action-btn-secondary"
@@ -747,6 +748,10 @@ async function cancelApplication() {
 
 function updateNewMessage(val: string | number) {
   newMessage.value = String(val);
+}
+
+function updateSearchQuery(val: string | number) {
+  feedSearchQuery.value = String(val);
 }
 
 async function sendMessageToBank() {
@@ -1634,22 +1639,8 @@ async function moveToDelivering(item: any) {
   align-items: center;
 }
 
-.mi-search-input {
-  padding: 6px 10px;
-  font-size: 13px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  outline: none;
-  width: 140px;
-  transition: border-color 0.2s;
-
-  &:focus {
-    border-color: #2563eb;
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
+.mi-search-wrapper {
+  width: 150px;
 }
 
 .mi-link-button {
