@@ -3,7 +3,19 @@ const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
-const ARCHIVED_ORDER_STATUSES = ['delivering', 'cancel-other', 'complete', 'shipped'];
+const ARCHIVED_ORDER_STATUSES = [
+    'delivering',
+    'complete',
+    'shipped',
+    'no-call',
+    'no-product',
+    'already-buyed',
+    'delyv-did-not-suit',
+    'prices-did-not-suit',
+    'cancel-other',
+    'purchase-return',
+    'ne-zabral-zakaz'
+];
 
 class FeedRepository {
     async upsertFeedItem(item) {
