@@ -3,11 +3,14 @@ const simla = require('../clients/simla');
 const config = require('../config');
 const logger = require('../utils/logger');
 const feedRepository = require('./feedRepository');
+const { ARCHIVED_ORDER_STATUSES } = require('./feedRepository');
 
 const productIdToName = Object.entries(config.loanProducts).reduce((acc, [key, id]) => {
     acc[id] = key;
     return acc;
 }, {});
+
+const pendingSubmissions = new Set();
 
 class CreditService {
     getProductName(productId) {
@@ -48,6 +51,20 @@ class CreditService {
     async submitApplication(orderId) {
         logger.info('Submitting application for order', { orderId });
 
+        if (pendingSubmissions.has(orderId)) {
+            throw new Error(`Заявка для заказа ${orderId} уже в процессе отправки`);
+        }
+
+        pendingSubmissions.add(orderId);
+
+        try {
+            return await this._submitApplicationInternal(orderId);
+        } finally {
+            pendingSubmissions.delete(orderId);
+        }
+    }
+
+    async _submitApplicationInternal(orderId) {
         const order = await simla.getOrder(orderId);
         if (!order) {
             throw new Error(`Order ${orderId} not found`);
@@ -374,6 +391,11 @@ class CreditService {
 
         for (const order of orders) {
             try {
+                if (order.status && ARCHIVED_ORDER_STATUSES.includes(order.status)) {
+                    logger.debug('Skipping order with archived status', { orderId: order.id, status: order.status });
+                    continue;
+                }
+
                 const orderData = simla.extractOrderData(order);
                 if (!orderData.loanApplicationId) continue;
 
@@ -436,12 +458,7 @@ class CreditService {
 
         try {
             const feedItems = await this.getFeedData();
-
-            if (feedItems.length === 0) {
-                logger.info('No feed items to sync');
-                await feedRepository.updateLastSyncTime();
-                return { synced: 0 };
-            }
+            const activeOrderIds = new Set(feedItems.map(item => item.orderId));
 
             const itemsToSync = feedItems.map(item => ({
                 orderId: item.orderId,
@@ -458,7 +475,36 @@ class CreditService {
                 orderCreatedAt: item.createdAt,
             }));
 
-            await feedRepository.upsertMany(itemsToSync);
+            if (itemsToSync.length > 0) {
+                await feedRepository.upsertMany(itemsToSync);
+            }
+
+            const existingItems = await feedRepository.getAllFeedItems({ archive: false });
+            const staleItems = existingItems.filter(item => !activeOrderIds.has(item.orderId));
+
+            for (const staleItem of staleItems) {
+                try {
+                    const order = await simla.getOrder(staleItem.orderId);
+                    if (order && order.status !== staleItem.orderStatus) {
+                        await feedRepository.upsertFeedItem({
+                            ...staleItem,
+                            orderStatus: order.status,
+                            crmStatus: simla.findCreditPayment(order)?.status || staleItem.crmStatus,
+                        });
+                        logger.debug('Updated stale item order status', {
+                            orderId: staleItem.orderId,
+                            oldStatus: staleItem.orderStatus,
+                            newStatus: order.status
+                        });
+                    }
+                } catch (error) {
+                    logger.warn('Failed to update stale item', {
+                        orderId: staleItem.orderId,
+                        error: error.message
+                    });
+                }
+            }
+
             await feedRepository.updateLastSyncTime();
 
             logger.info('Feed sync completed', { synced: feedItems.length });

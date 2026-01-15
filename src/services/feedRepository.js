@@ -154,3 +154,4 @@ class FeedRepository {
 }
 
 module.exports = new FeedRepository();
+module.exports.ARCHIVED_ORDER_STATUSES = ARCHIVED_ORDER_STATUSES;
