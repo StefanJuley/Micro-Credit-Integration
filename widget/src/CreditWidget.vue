@@ -863,17 +863,16 @@ function toggleArchiveView() {
 
 function getFeedItemClass(item: any): string {
   if (item.conditionsChanged) return 'conditions-changed';
-  if (item.bankStatus === 'Approved') return 'approved';
+  if (item.bankStatus === 'Approved' || item.bankStatus === 'SignedOnline' || item.bankStatus === 'SignedPhysically') return 'approved';
   if (item.bankStatus === 'Refused' || item.bankStatus === 'IssueRejected') return 'refused';
   if (item.bankStatus === 'Processing' || item.bankStatus === 'Placed') return 'processing';
   return '';
 }
 
 function getStatusClass(status: string): string {
-  if (status === 'Approved') return 'status-approved';
+  if (status === 'Approved' || status === 'SignedOnline' || status === 'SignedPhysically') return 'status-approved';
   if (status === 'Refused' || status === 'IssueRejected') return 'status-refused';
   if (status === 'Processing' || status === 'Placed') return 'status-processing';
-  if (status === 'SignedOnline' || status === 'SignedPhysically') return 'status-signed';
   if (status === 'Issued') return 'status-issued';
   return '';
 }
