@@ -105,6 +105,10 @@ class CreditService {
 
         const files = await simla.getOrderFilesAsBase64(orderId, order.site);
 
+        if (files.length === 0) {
+            throw new Error(`Необходимо прикрепить фото паспорта к заказу`);
+        }
+
         const applicationData = {
             idnp: orderData.idnp,
             name: orderData.name || '',
