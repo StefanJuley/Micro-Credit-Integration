@@ -204,24 +204,39 @@ class MicroinvestClient {
         }
     }
 
-    async sendMessage(applicationId, text) {
+    async sendMessage(applicationId, text, files = null) {
         try {
+            const body = { text };
+
+            if (files && files.length > 0) {
+                body.fileAttachmentSet = files.map(file => ({
+                    name: file.name,
+                    data: file.data
+                }));
+            }
+
             const response = await this.client.post('/SendMessage',
-                { text },
+                body,
                 {
                     headers: {
                         ...this.client.defaults.headers,
                         'applicationID': applicationId
-                    }
+                    },
+                    timeout: files ? 60000 : 30000
                 }
             );
 
-            logger.info('SendMessage success', { applicationId, text });
+            logger.info('SendMessage success', {
+                applicationId,
+                text,
+                filesCount: files?.length || 0
+            });
             return response.data;
         } catch (error) {
             logger.error('SendMessage failed', {
                 applicationId,
-                error: error.message
+                error: error.message,
+                response: error.response?.data
             });
             throw error;
         }

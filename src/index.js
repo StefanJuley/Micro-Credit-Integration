@@ -272,7 +272,7 @@ app.post('/api/get-messages', async (req, res) => {
 });
 
 app.post('/api/send-message', async (req, res) => {
-    const { orderId, text } = req.body;
+    const { orderId, text, withFiles } = req.body;
 
     if (!orderId) {
         return res.status(400).json({ success: false, error: 'orderId is required' });
@@ -283,7 +283,7 @@ app.post('/api/send-message', async (req, res) => {
     }
 
     try {
-        const result = await creditService.sendMessage(orderId, text);
+        const result = await creditService.sendMessage(orderId, text, withFiles === true);
         res.json(result);
     } catch (error) {
         logger.error('Failed to send message', { orderId, error: error.message });

@@ -682,8 +682,8 @@ class CreditService {
         };
     }
 
-    async sendMessage(orderId, text) {
-        logger.info('Sending message for order', { orderId });
+    async sendMessage(orderId, text, withFiles = false) {
+        logger.info('Sending message for order', { orderId, withFiles });
 
         const order = await simla.getOrder(orderId);
         if (!order) {
@@ -696,16 +696,26 @@ class CreditService {
             throw new Error(`Order ${orderId} has no application ID`);
         }
 
-        await microinvest.sendMessage(orderData.loanApplicationId, text);
+        let files = null;
+        if (withFiles) {
+            files = await simla.getOrderFilesAsBase64(orderId, order.site);
+            if (files.length === 0) {
+                throw new Error(`Нет файлов для отправки`);
+            }
+        }
+
+        await microinvest.sendMessage(orderData.loanApplicationId, text, files);
 
         logger.info('Message sent successfully', {
             orderId,
-            applicationId: orderData.loanApplicationId
+            applicationId: orderData.loanApplicationId,
+            filesCount: files?.length || 0
         });
 
         return {
             orderId,
             applicationId: orderData.loanApplicationId,
+            filesCount: files?.length || 0,
             success: true
         };
     }
