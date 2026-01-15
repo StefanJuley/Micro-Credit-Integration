@@ -356,6 +356,9 @@
   min-width: 120px;
   max-width: 160px;
 }
+.mi-filter-btn {
+  min-width: 100px;
+}
 .mi-feed-actions {
   display: flex;
   align-items: center;
@@ -557,9 +560,8 @@
   align-items: center;
 }
 .mi-search-wrapper {
-  flex: 2;
+  flex: 1;
   min-width: 200px;
-  max-width: 328px;
 }
 .mi-link-button {
   display: inline-flex;

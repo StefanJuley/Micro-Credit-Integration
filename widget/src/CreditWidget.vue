@@ -243,7 +243,7 @@
             <option value="my">{{ currentUserDisplayName }}</option>
           </select>
           <button
-            class="mi-action-btn mi-action-btn-primary"
+            class="mi-action-btn mi-action-btn-primary mi-filter-btn"
             @click="applyFilters"
           >
             Применить
@@ -259,7 +259,7 @@
             />
           </div>
           <button
-            class="mi-action-btn mi-action-btn-secondary"
+            class="mi-action-btn mi-action-btn-secondary mi-filter-btn"
             :disabled="!hasActiveFilters"
             @click="resetFilters"
           >
@@ -1476,6 +1476,10 @@ async function moveToDelivering(item: any) {
   max-width: 160px;
 }
 
+.mi-filter-btn {
+  min-width: 100px;
+}
+
 .mi-feed-actions {
   display: flex;
   align-items: center;
@@ -1721,9 +1725,8 @@ async function moveToDelivering(item: any) {
 }
 
 .mi-search-wrapper {
-  flex: 2;
+  flex: 1;
   min-width: 200px;
-  max-width: 328px;
 }
 
 .mi-link-button {
