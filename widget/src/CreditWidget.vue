@@ -268,7 +268,7 @@
         <div
           v-for="item in displayedFeedItems"
           :key="item.orderId"
-          :class="['mi-feed-item', getFeedItemClass(item)]"
+          :class="['mi-feed-item', getFeedItemClass(item), !isArchiveView ? getAgeClass(item.createdAt) : '']"
         >
           <div class="mi-feed-item-header">
             <span class="mi-feed-order">#{{ item.orderNumber }}</span>
@@ -302,6 +302,22 @@
                 <span v-if="item.conditionsChanged && item.comparison.requested.term !== item.comparison.approved.term" class="mi-feed-changed">
                   → {{ item.comparison.approved.term }} мес.
                 </span>
+              </span>
+            </div>
+            <div v-if="getSignatureStatus(item.bankStatus)" class="mi-feed-row">
+              <span class="mi-feed-label">Подпись:</span>
+              <span :class="['mi-feed-value', 'mi-signature-' + (item.bankStatus === 'Approved' ? 'pending' : 'done')]">
+                {{ getSignatureStatus(item.bankStatus) }}
+              </span>
+            </div>
+            <div v-if="isArchiveView && item.orderStatus" class="mi-feed-row">
+              <span class="mi-feed-label">Статус заказа:</span>
+              <span class="mi-feed-value">{{ getOrderStatusText(item.orderStatus) }}</span>
+            </div>
+            <div v-if="!isArchiveView" class="mi-feed-row mi-feed-age-row">
+              <span class="mi-feed-label">Создан:</span>
+              <span :class="['mi-feed-value', 'mi-age-text', getAgeClass(item.createdAt)]">
+                {{ getDaysAgoText(item.createdAt) }}
               </span>
             </div>
           </div>
@@ -858,6 +874,57 @@ function getStatusClass(status: string): string {
   return '';
 }
 
+function getDaysAgo(dateStr: string | null): number {
+  if (!dateStr) return 0;
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffTime = now.getTime() - date.getTime();
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+function getDaysAgoText(dateStr: string | null): string {
+  const days = getDaysAgo(dateStr);
+  if (days === 0) return 'Сегодня';
+  if (days === 1) return '1 день назад';
+  if (days >= 2 && days <= 4) return `${days} дня назад`;
+  return `${days} дней назад`;
+}
+
+function getAgeClass(dateStr: string | null): string {
+  const days = getDaysAgo(dateStr);
+  if (days <= 2) return 'age-fresh';
+  if (days <= 4) return 'age-warning';
+  return 'age-urgent';
+}
+
+function getSignatureStatus(bankStatus: string): string | null {
+  if (bankStatus === 'SignedOnline') return 'подписан онлайн';
+  if (bankStatus === 'SignedPhysically') return 'подписан физически';
+  if (bankStatus === 'Approved') return 'не подписан';
+  return null;
+}
+
+function getOrderStatusText(status: string | null): string {
+  if (!status) return '-';
+  const statusMap: Record<string, string> = {
+    'new': 'Новый',
+    'processing': 'В обработке',
+    'delivering': 'Доставляется',
+    'delivered': 'Доставлен',
+    'complete': 'Завершен',
+    'shipped': 'Отгружен',
+    'no-call': 'Не дозвонились',
+    'no-product': 'Нет товара',
+    'already-buyed': 'Уже купил',
+    'delyv-did-not-suit': 'Доставка не подошла',
+    'prices-did-not-suit': 'Цена не подошла',
+    'cancel-other': 'Отменен',
+    'purchase-return': 'Возврат',
+    'ne-zabral-zakaz': 'Не забрал заказ',
+  };
+  return statusMap[status] || status;
+}
+
 async function moveToDelivering(item: any) {
   item.delivering = true;
 
@@ -1355,6 +1422,18 @@ async function moveToDelivering(item: any) {
   &.processing {
     border-left: 4px solid #6366f1;
   }
+
+  &.age-fresh {
+    background: linear-gradient(to right, #d1fae5 0%, #fff 30%);
+  }
+
+  &.age-warning {
+    background: linear-gradient(to right, #fef3c7 0%, #fff 30%);
+  }
+
+  &.age-urgent {
+    background: linear-gradient(to right, #fee2e2 0%, #fff 30%);
+  }
 }
 
 .mi-feed-item-header {
@@ -1424,6 +1503,39 @@ async function moveToDelivering(item: any) {
 
 .mi-feed-changed {
   color: #f59e0b;
+  font-weight: 600;
+}
+
+.mi-feed-age-row {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.mi-age-text {
+  font-weight: 500;
+
+  &.age-fresh {
+    color: #059669;
+  }
+
+  &.age-warning {
+    color: #d97706;
+  }
+
+  &.age-urgent {
+    color: #dc2626;
+    font-weight: 600;
+  }
+}
+
+.mi-signature-pending {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.mi-signature-done {
+  color: #059669;
   font-weight: 600;
 }
 

@@ -395,6 +395,15 @@
 .mi-feed-item.processing {
   border-left: 4px solid #6366f1;
 }
+.mi-feed-item.age-fresh {
+  background: linear-gradient(to right, #d1fae5 0%, #fff 30%);
+}
+.mi-feed-item.age-warning {
+  background: linear-gradient(to right, #fef3c7 0%, #fff 30%);
+}
+.mi-feed-item.age-urgent {
+  background: linear-gradient(to right, #fee2e2 0%, #fff 30%);
+}
 .mi-feed-item-header {
   display: flex;
   justify-content: space-between;
@@ -450,6 +459,32 @@
 }
 .mi-feed-changed {
   color: #f59e0b;
+  font-weight: 600;
+}
+.mi-feed-age-row {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+}
+.mi-age-text {
+  font-weight: 500;
+}
+.mi-age-text.age-fresh {
+  color: #059669;
+}
+.mi-age-text.age-warning {
+  color: #d97706;
+}
+.mi-age-text.age-urgent {
+  color: #dc2626;
+  font-weight: 600;
+}
+.mi-signature-pending {
+  color: #6b7280;
+  font-style: italic;
+}
+.mi-signature-done {
+  color: #059669;
   font-weight: 600;
 }
 .mi-feed-item-actions {
