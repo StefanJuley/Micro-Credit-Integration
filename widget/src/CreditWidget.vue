@@ -1001,7 +1001,13 @@ function getOrderStatusText(status: string | null): string {
   if (!status) return '-';
   const statusMap: Record<string, string> = {
     'new': 'Новый',
+    'avail-confirmed': 'Наличие подтверждено',
+    'credit-check': 'Проверка кредита',
+    'credit-approved': 'Кредит одобрен',
+    'conditions-changed': 'Условия изменены',
     'processing': 'В обработке',
+    'preparing': 'Комплектуется',
+    'ready': 'Готов к выдаче',
     'delivering': 'Доставляется',
     'delivered': 'Доставлен',
     'complete': 'Завершен',
