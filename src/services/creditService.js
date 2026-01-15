@@ -736,7 +736,10 @@ class CreditService {
         let approved = null;
         let comparison = null;
 
-        if (bankStatus) {
+        const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Issued', 'PendingIssue', 'IssueRejected', 'Refused'];
+        const isApproved = bankStatus && approvedStatuses.includes(bankStatus.status);
+
+        if (isApproved) {
             const approvedProductName = this.getProductName(bankStatus.loanProductID);
 
             approved = {
