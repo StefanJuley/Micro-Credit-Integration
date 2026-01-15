@@ -220,6 +220,9 @@
   display: flex;
   gap: 8px;
 }
+.mi-send-files {
+  margin-top: 8px;
+}
 .mi-textbox-wrapper {
   flex: 1;
   display: flex;

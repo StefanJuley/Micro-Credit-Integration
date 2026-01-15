@@ -171,6 +171,16 @@
               Отправить
             </UiButton>
           </div>
+          <div class="mi-send-files">
+            <UiButton
+              :loading="sendingFiles"
+              appearance="secondary"
+              size="sm"
+              @click="sendFilesToBank"
+            >
+              Отправить прикрепленные документы
+            </UiButton>
+          </div>
         </div>
 
         <div v-if="message" :class="['mi-message', messageType]">
@@ -389,6 +399,7 @@ const contractsLoading = ref(false);
 const cancelLoading = ref(false);
 const messagesLoading = ref(false);
 const sendingMessage = ref(false);
+const sendingFiles = ref(false);
 const message = ref('');
 const messageType = ref<'success' | 'error' | ''>('');
 
@@ -727,6 +738,41 @@ async function sendMessageToBank() {
     messageType.value = 'error';
   } finally {
     sendingMessage.value = false;
+  }
+}
+
+async function sendFilesToBank() {
+  if (!orderId.value) return;
+
+  sendingFiles.value = true;
+  message.value = '';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/send-message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: orderId.value,
+        text: 'Прикрепляю документы',
+        withFiles: true
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      message.value = `Документы отправлены (${data.filesCount} файлов)`;
+      messageType.value = 'success';
+      await loadMessages();
+    } else {
+      message.value = `Ошибка: ${data.error || 'Не удалось отправить документы'}`;
+      messageType.value = 'error';
+    }
+  } catch (err: any) {
+    message.value = `Ошибка: ${err.message}`;
+    messageType.value = 'error';
+  } finally {
+    sendingFiles.value = false;
   }
 }
 
@@ -1103,6 +1149,10 @@ async function moveToDelivering(item: any) {
 .mi-message-input {
   display: flex;
   gap: 8px;
+}
+
+.mi-send-files {
+  margin-top: 8px;
 }
 
 .mi-textbox-wrapper {
