@@ -9,7 +9,7 @@
     </UiToolbarButton>
   </div>
 
-  <UiModalSidebar v-model:opened="modalOpened" size="lg" @close="closeModal">
+  <UiModalSidebar v-model:opened="modalOpened" size="lg" direction="left" @close="closeModal">
     <template #title>Кредитная заявка</template>
 
     <div class="mi-content">
