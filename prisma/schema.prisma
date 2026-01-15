@@ -18,6 +18,8 @@ model FeedItem {
   crmStatus        String?
   paymentType      String?
   orderStatus      String?
+  managerId        Int?
+  managerName      String?
   conditionsChanged Boolean @default(false)
   comparison       Json?
   orderCreatedAt   DateTime?
@@ -28,6 +30,7 @@ model FeedItem {
   @@index([conditionsChanged])
   @@index([creditCompany])
   @@index([orderStatus])
+  @@index([managerId])
   @@map("feed_items")
 }
 

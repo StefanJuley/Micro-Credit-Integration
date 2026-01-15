@@ -389,6 +389,10 @@ class CreditService {
         const orders = await simla.getOrdersWithActiveApplications();
         const feedItems = [];
 
+        if (orders.length > 0) {
+            logger.info('First order keys', { keys: Object.keys(orders[0]) });
+        }
+
         for (const order of orders) {
             try {
                 if (order.status && ARCHIVED_ORDER_STATUSES.includes(order.status)) {
@@ -426,7 +430,7 @@ class CreditService {
                 }
 
                 const managerName = await simla.getManagerName(order.managerId);
-                logger.debug('Manager info', { orderId: order.id, managerId: order.managerId, managerName });
+                logger.info('Manager info', { orderId: order.id, managerId: order.managerId, managerName });
 
                 feedItems.push({
                     orderId: order.id,
@@ -475,6 +479,8 @@ class CreditService {
                 crmStatus: item.crmStatus,
                 paymentType: item.paymentType,
                 orderStatus: item.orderStatus,
+                managerId: item.managerId,
+                managerName: item.managerName,
                 conditionsChanged: item.conditionsChanged,
                 comparison: item.comparison,
                 orderCreatedAt: item.createdAt,
@@ -537,6 +543,8 @@ class CreditService {
                 crmStatus: item.crmStatus,
                 paymentType: item.paymentType,
                 orderStatus: item.orderStatus,
+                managerId: item.managerId,
+                managerName: item.managerName,
                 conditionsChanged: item.conditionsChanged,
                 comparison: item.comparison,
                 createdAt: item.orderCreatedAt,
