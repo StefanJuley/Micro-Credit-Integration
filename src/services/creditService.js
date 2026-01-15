@@ -425,6 +425,8 @@ class CreditService {
                     };
                 }
 
+                const managerName = await simla.getManagerName(order.managerId);
+
                 feedItems.push({
                     orderId: order.id,
                     orderNumber: order.number,
@@ -436,6 +438,7 @@ class CreditService {
                     paymentType: orderData.payment?.type || null,
                     orderStatus: order.status || null,
                     managerId: order.managerId || null,
+                    managerName: managerName || null,
                     conditionsChanged,
                     comparison,
                     createdAt: order.createdAt || null

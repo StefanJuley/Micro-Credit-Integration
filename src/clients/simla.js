@@ -11,6 +11,7 @@ class SimlaClient {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
+        this.usersCache = new Map();
     }
 
     buildParams(params = {}) {
@@ -393,6 +394,39 @@ class SimlaClient {
                    name === 'client.pdf' ||
                    name === 'microinvest.pdf';
         });
+    }
+
+    async getUser(userId) {
+        if (!userId) return null;
+
+        if (this.usersCache.has(userId)) {
+            return this.usersCache.get(userId);
+        }
+
+        try {
+            const response = await this.client.get(`/users/${userId}?${this.buildParams()}`);
+            const user = response.data?.user || null;
+
+            if (user) {
+                this.usersCache.set(userId, user);
+            }
+
+            return user;
+        } catch (error) {
+            logger.error('getUser failed', { userId, error: error.message });
+            return null;
+        }
+    }
+
+    async getManagerName(managerId) {
+        if (!managerId) return null;
+
+        const user = await this.getUser(managerId);
+        if (!user) return null;
+
+        const firstName = user.firstName || '';
+        const lastName = user.lastName || '';
+        return `${firstName} ${lastName}`.trim() || null;
     }
 }
 

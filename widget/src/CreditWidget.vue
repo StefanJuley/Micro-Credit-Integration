@@ -240,7 +240,7 @@
             @change="onManagerFilterChange"
           >
             <option value="">Все менеджеры</option>
-            <option value="my">Мои заявки</option>
+            <option value="my">{{ currentUserDisplayName }}</option>
           </select>
         </div>
         <div class="mi-feed-filters-row">
@@ -318,6 +318,10 @@
             <div v-if="item.orderStatus" class="mi-feed-row">
               <span class="mi-feed-label">Статус заказа:</span>
               <span class="mi-feed-value">{{ getOrderStatusText(item.orderStatus) }}</span>
+            </div>
+            <div v-if="item.managerName" class="mi-feed-row">
+              <span class="mi-feed-label">Менеджер:</span>
+              <span class="mi-feed-value">{{ item.managerName }}</span>
             </div>
             <div v-if="getSignatureStatus(item.bankStatus)" class="mi-feed-row">
               <span class="mi-feed-label">Подпись:</span>
@@ -454,6 +458,13 @@ const cancelReason = ref('');
 
 const canSendMessage = computed(() => {
   return newMessage.value.trim().length > 0 && !sendingMessage.value;
+});
+
+const currentUserDisplayName = computed(() => {
+  const firstName = currentUserFirstName.value || '';
+  const lastName = currentUserLastName.value || '';
+  const name = `${firstName} ${lastName}`.trim();
+  return name || 'Мои заявки';
 });
 
 const showFeedModal = ref(false);
