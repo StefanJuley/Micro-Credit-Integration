@@ -351,6 +351,11 @@
   color: #111827;
   background: #ffffff;
 }
+.mi-filter-select {
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
+}
 .mi-feed-actions {
   display: flex;
   align-items: center;
@@ -537,7 +542,7 @@
   background: #f3f4f6;
   color: #374151;
 }
-.mi-action-btn-secondary:hover {
+.mi-action-btn-secondary:hover:not(:disabled) {
   background: #e5e7eb;
   text-decoration: none;
 }
@@ -552,8 +557,9 @@
   align-items: center;
 }
 .mi-search-wrapper {
-  flex: 1;
+  flex: 2;
   min-width: 200px;
+  max-width: 328px;
 }
 .mi-link-button {
   display: inline-flex;

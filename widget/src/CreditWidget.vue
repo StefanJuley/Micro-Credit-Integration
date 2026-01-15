@@ -214,7 +214,7 @@
         <div class="mi-feed-filters-row">
           <select
             :value="feedStatusFilter"
-            class="mi-select"
+            class="mi-select mi-filter-select"
             @change="onStatusFilterChange"
           >
             <option value="">Все статусы</option>
@@ -225,7 +225,7 @@
           </select>
           <select
             :value="feedCompanyFilter"
-            class="mi-select"
+            class="mi-select mi-filter-select"
             @change="onCompanyFilterChange"
           >
             <option value="">Все компании</option>
@@ -236,31 +236,31 @@
           </select>
           <select
             :value="feedManagerFilter"
-            class="mi-select"
+            class="mi-select mi-filter-select"
             @change="onManagerFilterChange"
           >
             <option value="">Все менеджеры</option>
             <option value="my">{{ currentUserDisplayName }}</option>
           </select>
-        </div>
-        <div class="mi-feed-filters-row">
-          <div class="mi-search-wrapper" @keydown="onSearchKeydown">
-            <UiTextbox
-              :value="feedSearchQuery"
-              placeholder="Поиск (Enter для применения)..."
-              size="sm"
-              @update:value="updateSearchQuery"
-            />
-          </div>
           <button
             class="mi-action-btn mi-action-btn-primary"
             @click="applyFilters"
           >
             Применить
           </button>
+        </div>
+        <div class="mi-feed-filters-row">
+          <div class="mi-search-wrapper" @keydown="onSearchKeydown">
+            <UiTextbox
+              :value="feedSearchQuery"
+              placeholder="Поиск (Enter)..."
+              size="sm"
+              @update:value="updateSearchQuery"
+            />
+          </div>
           <button
-            v-if="hasActiveFilters"
             class="mi-action-btn mi-action-btn-secondary"
+            :disabled="!hasActiveFilters"
             @click="resetFilters"
           >
             Сбросить
@@ -1470,6 +1470,12 @@ async function moveToDelivering(item: any) {
   }
 }
 
+.mi-filter-select {
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
+}
+
 .mi-feed-actions {
   display: flex;
   align-items: center;
@@ -1696,7 +1702,7 @@ async function moveToDelivering(item: any) {
   background: #f3f4f6;
   color: #374151;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #e5e7eb;
     text-decoration: none;
   }
@@ -1715,8 +1721,9 @@ async function moveToDelivering(item: any) {
 }
 
 .mi-search-wrapper {
-  flex: 1;
+  flex: 2;
   min-width: 200px;
+  max-width: 328px;
 }
 
 .mi-link-button {
