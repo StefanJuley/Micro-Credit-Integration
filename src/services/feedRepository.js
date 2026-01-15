@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 
 const ARCHIVED_ORDER_STATUSES = [
     'delivering',
+    'delivered',
     'complete',
     'shipped',
     'no-call',
