@@ -426,6 +426,7 @@ class CreditService {
                 }
 
                 const managerName = await simla.getManagerName(order.managerId);
+                logger.debug('Manager info', { orderId: order.id, managerId: order.managerId, managerName });
 
                 feedItems.push({
                     orderId: order.id,
