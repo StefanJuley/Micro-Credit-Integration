@@ -201,7 +201,7 @@
     </template>
   </UiModalSidebar>
 
-  <UiModalSidebar v-model:opened="showFeedModal" size="lg" scrolling="native" @close="showFeedModal = false">
+  <UiModalSidebar v-model:opened="showFeedModal" size="lg" direction="left" scrolling="native" @close="showFeedModal = false">
     <template #title>
       <div class="mi-feed-header">
         <span>{{ isArchiveView ? 'Архив заявок' : 'Лента заявок' }}</span>
