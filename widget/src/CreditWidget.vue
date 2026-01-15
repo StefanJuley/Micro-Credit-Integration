@@ -1727,7 +1727,7 @@ async function moveToDelivering(item: any) {
 }
 
 .mi-search-wrapper {
-  width: 325px;
+  width: 327px;
 
   > span {
     width: 100%;
@@ -1736,6 +1736,7 @@ async function moveToDelivering(item: any) {
 
 .mi-feed-filters-row:last-child .mi-filter-btn {
   margin-left: auto;
+  margin-right: 37px;
 }
 
 .mi-link-button {
