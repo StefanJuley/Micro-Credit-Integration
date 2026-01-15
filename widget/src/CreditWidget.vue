@@ -240,6 +240,13 @@
           >
             Применить
           </button>
+          <input
+            v-model="feedSearchQuery"
+            type="text"
+            class="mi-search-input"
+            placeholder="Поиск..."
+            @keyup.enter="applyFilters"
+          />
           <button
             v-if="hasActiveFilters"
             class="mi-action-btn mi-action-btn-secondary"
@@ -248,13 +255,6 @@
             Сбросить
           </button>
         </div>
-        <button
-          :disabled="feedLoading"
-          class="mi-action-btn mi-action-btn-primary"
-          @click="loadFeed"
-        >
-          {{ feedLoading ? 'Загрузка...' : 'Обновить' }}
-        </button>
       </div>
 
       <div class="mi-feed-list-wrapper">
@@ -354,9 +354,18 @@
         <UiButton appearance="secondary" @click="showFeedModal = false">
           Закрыть
         </UiButton>
-        <UiButton appearance="secondary" @click="toggleArchiveView">
-          {{ isArchiveView ? 'Активные' : 'Архив' }}
-        </UiButton>
+        <div class="mi-footer-actions">
+          <button
+            :disabled="feedLoading"
+            class="mi-action-btn mi-action-btn-primary"
+            @click="loadFeed"
+          >
+            {{ feedLoading ? 'Загрузка...' : 'Обновить' }}
+          </button>
+          <UiButton appearance="secondary" @click="toggleArchiveView">
+            {{ isArchiveView ? 'Активные' : 'Архив' }}
+          </UiButton>
+        </div>
       </div>
     </template>
   </UiModalSidebar>
@@ -436,11 +445,13 @@ const feedLoading = ref(false);
 const feedItems = ref<any[]>([]);
 const feedStatusFilter = ref('');
 const feedCompanyFilter = ref('');
+const feedSearchQuery = ref('');
 const displayedFeedItems = ref<any[]>([]);
 const hasActiveFilters = ref(false);
 const isArchiveView = ref(false);
 
-function filterFeedItems(items: any[], statusFilter: string, companyFilter: string): any[] {
+function filterFeedItems(items: any[], statusFilter: string, companyFilter: string, searchQuery: string): any[] {
+  const query = searchQuery.toLowerCase().trim();
   return items.filter(item => {
     if (statusFilter) {
       if (statusFilter === 'conditions-changed') {
@@ -457,6 +468,14 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
     if (companyFilter && item.creditCompany !== companyFilter) {
       return false;
     }
+    if (query) {
+      const orderNumber = String(item.orderNumber || '').toLowerCase();
+      const customerName = String(item.customerName || '').toLowerCase();
+      const applicationId = String(item.applicationId || '').toLowerCase();
+      if (!orderNumber.includes(query) && !customerName.includes(query) && !applicationId.includes(query)) {
+        return false;
+      }
+    }
     return true;
   });
 }
@@ -470,14 +489,15 @@ function onCompanyFilterChange(e: Event) {
 }
 
 function applyFilters() {
-  const filtered = filterFeedItems(feedItems.value, feedStatusFilter.value, feedCompanyFilter.value);
+  const filtered = filterFeedItems(feedItems.value, feedStatusFilter.value, feedCompanyFilter.value, feedSearchQuery.value);
   displayedFeedItems.value = [...filtered];
-  hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '';
+  hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedSearchQuery.value !== '';
 }
 
 function resetFilters() {
   feedStatusFilter.value = '';
   feedCompanyFilter.value = '';
+  feedSearchQuery.value = '';
   displayedFeedItems.value = [...feedItems.value];
   hasActiveFilters.value = false;
 }
@@ -843,7 +863,7 @@ async function loadFeed() {
         delivering: false
       }));
       feedItems.value = items;
-      const filtered = filterFeedItems(items, feedStatusFilter.value, feedCompanyFilter.value);
+      const filtered = filterFeedItems(items, feedStatusFilter.value, feedCompanyFilter.value, feedSearchQuery.value);
       displayedFeedItems.value = [...filtered];
     }
   } catch (err: any) {
@@ -857,6 +877,7 @@ function toggleArchiveView() {
   isArchiveView.value = !isArchiveView.value;
   feedStatusFilter.value = '';
   feedCompanyFilter.value = '';
+  feedSearchQuery.value = '';
   hasActiveFilters.value = false;
   loadFeed();
 }
@@ -1605,6 +1626,30 @@ async function moveToDelivering(item: any) {
   display: flex;
   justify-content: space-between;
   width: 100%;
+}
+
+.mi-footer-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mi-search-input {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  width: 140px;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: #2563eb;
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
 }
 
 .mi-link-button {

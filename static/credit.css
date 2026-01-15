@@ -542,6 +542,26 @@
   justify-content: space-between;
   width: 100%;
 }
+.mi-footer-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mi-search-input {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  width: 140px;
+  transition: border-color 0.2s;
+}
+.mi-search-input:focus {
+  border-color: #2563eb;
+}
+.mi-search-input::placeholder {
+  color: #9ca3af;
+}
 .mi-link-button {
   display: inline-flex;
   align-items: center;
