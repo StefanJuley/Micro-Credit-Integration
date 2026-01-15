@@ -445,6 +445,10 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
     if (statusFilter) {
       if (statusFilter === 'conditions-changed') {
         if (!item.conditionsChanged) return false;
+      } else if (statusFilter === 'Approved') {
+        if (item.conditionsChanged) return false;
+        const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Issued', 'PendingIssue'];
+        if (!approvedStatuses.includes(item.bankStatus)) return false;
       } else {
         if (item.conditionsChanged) return false;
         if (item.bankStatus !== statusFilter) return false;
