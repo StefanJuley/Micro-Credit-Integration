@@ -371,7 +371,7 @@
     </template>
   </UiModalSidebar>
 
-  <UiModalSidebar v-model:opened="showCancelDialog" size="sm" @close="showCancelDialog = false">
+  <UiModalSidebar v-model:opened="showCancelDialog" size="sm" direction="left" @close="showCancelDialog = false">
     <template #title>Отмена заявки</template>
     <div class="mi-cancel-content">
       <p>Укажите причину отмены:</p>
