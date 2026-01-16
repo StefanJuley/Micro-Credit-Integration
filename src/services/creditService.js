@@ -406,26 +406,26 @@ class CreditService {
                 const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
 
                 let conditionsChanged = false;
-                let comparison = null;
+                const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
+                const requestedProductName = this.getProductName(requestedProductId);
+
+                let comparison = {
+                    requested: {
+                        amount: parseFloat(orderData.payment?.amount) || 0,
+                        term: parseInt(orderData.creditTerm) || 0,
+                        productType: requestedProductName.startsWith('0%') ? '0%' : 'retail'
+                    },
+                    approved: null
+                };
 
                 if (bankStatus && bankStatus.status === 'Approved') {
                     conditionsChanged = this.checkConditionsChanged(orderData, bankStatus);
-
-                    const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
-                    const requestedProductName = this.getProductName(requestedProductId);
                     const approvedProductName = this.getProductName(bankStatus.loanProductID);
 
-                    comparison = {
-                        requested: {
-                            amount: parseFloat(orderData.payment?.amount) || 0,
-                            term: parseInt(orderData.creditTerm) || 0,
-                            productType: requestedProductName.startsWith('0%') ? '0%' : 'retail'
-                        },
-                        approved: {
-                            amount: bankStatus.amount || 0,
-                            term: bankStatus.loanTerm || 0,
-                            productType: approvedProductName.startsWith('0%') ? '0%' : 'retail'
-                        }
+                    comparison.approved = {
+                        amount: bankStatus.amount || 0,
+                        term: bankStatus.loanTerm || 0,
+                        productType: approvedProductName.startsWith('0%') ? '0%' : 'retail'
                     };
                 }
 

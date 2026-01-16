@@ -341,20 +341,20 @@
               <span class="mi-feed-label">ID заявки:</span>
               <span class="mi-feed-value">{{ item.applicationId }}</span>
             </div>
-            <div v-if="item.comparison" class="mi-feed-row">
+            <div v-if="item.comparison && item.comparison.requested" class="mi-feed-row">
               <span class="mi-feed-label">Сумма:</span>
               <span class="mi-feed-value">
                 {{ formatAmount(item.comparison.requested.amount) }}
-                <span v-if="item.conditionsChanged" class="mi-feed-changed">
+                <span v-if="item.conditionsChanged && item.comparison.approved" class="mi-feed-changed">
                   → {{ formatAmount(item.comparison.approved.amount) }}
                 </span>
               </span>
             </div>
-            <div v-if="item.comparison" class="mi-feed-row">
+            <div v-if="item.comparison && item.comparison.requested" class="mi-feed-row">
               <span class="mi-feed-label">Срок:</span>
               <span class="mi-feed-value">
                 {{ item.comparison.requested.term }} мес.
-                <span v-if="item.conditionsChanged && item.comparison.requested.term !== item.comparison.approved.term" class="mi-feed-changed">
+                <span v-if="item.conditionsChanged && item.comparison.approved && item.comparison.requested.term !== item.comparison.approved.term" class="mi-feed-changed">
                   → {{ item.comparison.approved.term }} мес.
                 </span>
               </span>
@@ -373,9 +373,9 @@
                 {{ getSignatureStatus(item.bankStatus) }}
               </span>
             </div>
-            <div v-if="!isArchiveView" class="mi-feed-row mi-feed-age-row">
+            <div class="mi-feed-row mi-feed-age-row">
               <span class="mi-feed-label">Создан:</span>
-              <span :class="['mi-feed-value', 'mi-age-text', getAgeClass(item.createdAt)]">
+              <span :class="['mi-feed-value', 'mi-age-text', !isArchiveView ? getAgeClass(item.createdAt) : '']">
                 {{ getDaysAgoText(item.createdAt) }}
               </span>
             </div>
