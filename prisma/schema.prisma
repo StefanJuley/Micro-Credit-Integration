@@ -42,3 +42,16 @@ model SyncMetadata {
 
   @@map("sync_metadata")
 }
+
+model SentMessage {
+  id            Int      @id @default(autoincrement())
+  applicationId String
+  messageText   String
+  managerId     Int
+  managerName   String
+  sentAt        DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([applicationId, sentAt])
+  @@map("sent_messages")
+}

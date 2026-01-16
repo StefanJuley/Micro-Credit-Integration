@@ -814,7 +814,9 @@ async function sendMessageToBank() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId: orderId.value,
-        text: newMessage.value.trim()
+        text: newMessage.value.trim(),
+        managerId: currentUserId.value,
+        managerName: currentUserDisplayName.value
       }),
     });
 
@@ -848,7 +850,9 @@ async function sendFilesToBank() {
       body: JSON.stringify({
         orderId: orderId.value,
         text: 'Прикрепляю документы',
-        withFiles: true
+        withFiles: true,
+        managerId: currentUserId.value,
+        managerName: currentUserDisplayName.value
       }),
     });
 
@@ -883,6 +887,9 @@ function isOurMessage(msg: any): boolean {
 function getMessageSender(msg: any): string {
   const senderId = msg.senderID || msg.senderId || '';
   if (senderId.startsWith('PAN')) {
+    if (msg.managerName) {
+      return msg.managerName;
+    }
     return 'Pandashop';
   }
   return msg.senderName || 'Банк';

@@ -734,23 +734,37 @@ class CreditService {
         const response = await microinvest.getMessages(orderData.loanApplicationId, newOnly);
 
         const messages = response?.messageSet || [];
-        if (messages.length > 0) {
-            logger.info('Message structure sample', {
-                firstMessage: messages[0],
-                messageKeys: Object.keys(messages[0] || {})
-            });
-        }
+
+        const sentMessages = await feedRepository.getSentMessagesByApplicationId(orderData.loanApplicationId);
+
+        const enrichedMessages = messages.map(msg => {
+            if (msg.senderID && msg.senderID.startsWith('PAN')) {
+                const matchingSent = sentMessages.find(sent =>
+                    sent.messageText === msg.text &&
+                    Math.abs(new Date(sent.sentAt).getTime() - new Date(msg.date).getTime()) < 60000
+                );
+
+                if (matchingSent) {
+                    return {
+                        ...msg,
+                        managerName: matchingSent.managerName,
+                        managerId: matchingSent.managerId
+                    };
+                }
+            }
+            return msg;
+        });
 
         return {
             orderId,
             applicationId: orderData.loanApplicationId,
-            messages,
+            messages: enrichedMessages,
             success: true
         };
     }
 
-    async sendMessage(orderId, text, withFiles = false) {
-        logger.info('Sending message for order', { orderId, withFiles });
+    async sendMessage(orderId, text, withFiles = false, managerId = null, managerName = null) {
+        logger.info('Sending message for order', { orderId, withFiles, managerId, managerName });
 
         const order = await simla.getOrder(orderId);
         if (!order) {
@@ -772,6 +786,24 @@ class CreditService {
         }
 
         await microinvest.sendMessage(orderData.loanApplicationId, text, files);
+
+        if (managerId && managerName) {
+            try {
+                await feedRepository.saveSentMessage({
+                    applicationId: orderData.loanApplicationId,
+                    messageText: text,
+                    managerId,
+                    managerName
+                });
+                logger.info('Saved message sender info', {
+                    applicationId: orderData.loanApplicationId,
+                    managerId,
+                    managerName
+                });
+            } catch (error) {
+                logger.error('Failed to save message sender info', { error: error.message });
+            }
+        }
 
         logger.info('Message sent successfully', {
             orderId,

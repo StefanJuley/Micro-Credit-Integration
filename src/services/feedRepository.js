@@ -152,6 +152,24 @@ class FeedRepository {
         return await prisma.feedItem.count();
     }
 
+    async saveSentMessage(data) {
+        return await prisma.sentMessage.create({
+            data: {
+                applicationId: data.applicationId,
+                messageText: data.messageText,
+                managerId: data.managerId,
+                managerName: data.managerName
+            }
+        });
+    }
+
+    async getSentMessagesByApplicationId(applicationId) {
+        return await prisma.sentMessage.findMany({
+            where: { applicationId },
+            orderBy: { sentAt: 'asc' }
+        });
+    }
+
     async disconnect() {
         await prisma.$disconnect();
     }
