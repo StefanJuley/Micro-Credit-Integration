@@ -232,7 +232,6 @@
             <option value="microinvest">Microinvest</option>
             <option value="easy-credit">Easy Credit</option>
             <option value="iute-credit">Iute Credit</option>
-            <option value="maib">Maib</option>
           </select>
           <select
             :value="feedManagerFilter"
