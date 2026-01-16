@@ -153,7 +153,7 @@
                 :class="['mi-message-item', isOurMessage(msg) ? 'mi-message-ours' : 'mi-message-bank']"
               >
                 <div class="mi-message-header">
-                  <span class="mi-message-sender">{{ msg.senderName || 'Неизвестно' }}</span>
+                  <span class="mi-message-sender">{{ getMessageSender(msg) }}</span>
                   <span class="mi-message-date">{{ formatMessageDate(msg.date) }}</span>
                 </div>
                 <span class="mi-message-text">{{ msg.text || msg }}</span>
@@ -878,6 +878,14 @@ function formatAmount(amount: number): string {
 function isOurMessage(msg: any): boolean {
   const senderId = msg.senderID || msg.senderId || '';
   return senderId.startsWith('PAN');
+}
+
+function getMessageSender(msg: any): string {
+  const senderId = msg.senderID || msg.senderId || '';
+  if (senderId.startsWith('PAN')) {
+    return 'Pandashop';
+  }
+  return msg.senderName || 'Банк';
 }
 
 function formatMessageDate(dateStr: string | null): string {
