@@ -76,6 +76,14 @@ class SimlaClient {
             const response3 = await this.client.get(`/orders?${params3}`);
             orders = orders.concat(response3.data?.orders || []);
 
+            const params4 = this.buildParams({
+                'filter[customFields][credit_company][]': 'microinvest',
+                'filter[paymentStatuses][]': 'credit-declined',
+                limit: 100
+            });
+            const response4 = await this.client.get(`/orders?${params4}`);
+            orders = orders.concat(response4.data?.orders || []);
+
             const filtered = orders.filter(order => {
                 const appId = order.customFields?.[config.crmFields.loanApplicationId];
                 if (!appId || appId.length === 0) return false;
