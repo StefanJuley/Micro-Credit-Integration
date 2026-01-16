@@ -42,31 +42,31 @@
           </div>
         </div>
 
-        <div v-if="comparisonData?.approved" class="mi-comparison-section">
-          <h4 class="mi-section-title">Сравнение условий</h4>
+        <div v-if="comparisonData?.requested" class="mi-comparison-section">
+          <h4 class="mi-section-title">{{ comparisonData?.approved ? 'Сравнение условий' : 'Запрошенные условия' }}</h4>
           <div class="mi-comparison-table">
             <div class="mi-comparison-header">
               <span></span>
               <span>Запрошено</span>
-              <span>Одобрено</span>
+              <span v-if="comparisonData?.approved">Одобрено</span>
             </div>
-            <div :class="['mi-comparison-row', comparisonData.comparison?.amountMatch ? 'match' : 'mismatch']">
+            <div :class="['mi-comparison-row', comparisonData?.approved ? (comparisonData.comparison?.amountMatch ? 'match' : 'mismatch') : '']">
               <span class="mi-comparison-label">Сумма</span>
               <span class="mi-comparison-value">{{ formatAmount(comparisonData.requested?.amount) }}</span>
-              <span class="mi-comparison-value">{{ formatAmount(comparisonData.approved?.amount) }}</span>
+              <span v-if="comparisonData?.approved" class="mi-comparison-value">{{ formatAmount(comparisonData.approved?.amount) }}</span>
             </div>
-            <div :class="['mi-comparison-row', comparisonData.comparison?.termMatch ? 'match' : 'mismatch']">
+            <div :class="['mi-comparison-row', comparisonData?.approved ? (comparisonData.comparison?.termMatch ? 'match' : 'mismatch') : '']">
               <span class="mi-comparison-label">Срок</span>
               <span class="mi-comparison-value">{{ comparisonData.requested?.term }} мес.</span>
-              <span class="mi-comparison-value">{{ comparisonData.approved?.term }} мес.</span>
+              <span v-if="comparisonData?.approved" class="mi-comparison-value">{{ comparisonData.approved?.term }} мес.</span>
             </div>
-            <div :class="['mi-comparison-row', comparisonData.comparison?.productMatch ? 'match' : 'mismatch']">
+            <div :class="['mi-comparison-row', comparisonData?.approved ? (comparisonData.comparison?.productMatch ? 'match' : 'mismatch') : '']">
               <span class="mi-comparison-label">Тип</span>
               <span class="mi-comparison-value">{{ comparisonData.requested?.productType }}</span>
-              <span class="mi-comparison-value">{{ comparisonData.approved?.productType }}</span>
+              <span v-if="comparisonData?.approved" class="mi-comparison-value">{{ comparisonData.approved?.productType }}</span>
             </div>
           </div>
-          <div v-if="comparisonData.comparison?.hasChanges" class="mi-warning">
+          <div v-if="comparisonData?.approved && comparisonData.comparison?.hasChanges" class="mi-warning">
             Банк изменил условия кредита
           </div>
         </div>

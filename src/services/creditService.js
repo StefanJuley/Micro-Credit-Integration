@@ -849,7 +849,7 @@ class CreditService {
         let approved = null;
         let comparison = null;
 
-        const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Issued', 'PendingIssue', 'IssueRejected', 'Refused'];
+        const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Issued', 'PendingIssue'];
         const isApproved = bankStatus && approvedStatuses.includes(bankStatus.status);
 
         if (isApproved) {
