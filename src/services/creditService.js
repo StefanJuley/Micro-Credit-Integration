@@ -429,8 +429,10 @@ class CreditService {
                     };
                 }
 
-                const managerName = await simla.getManagerName(order.managerId);
-                logger.info('Manager info', { orderId: order.id, managerId: order.managerId, managerName });
+                const fullOrder = await simla.getOrder(order.id);
+                const managerId = fullOrder?.managerId || order.managerId || null;
+                const managerName = await simla.getManagerName(managerId);
+                logger.info('Manager info', { orderId: order.id, managerId, managerName });
 
                 feedItems.push({
                     orderId: order.id,
@@ -441,8 +443,8 @@ class CreditService {
                     bankStatus: bankStatus?.status || 'Unknown',
                     crmStatus: orderData.payment?.status || null,
                     paymentType: orderData.payment?.type || null,
-                    orderStatus: order.status || null,
-                    managerId: order.managerId || null,
+                    orderStatus: fullOrder?.status || order.status || null,
+                    managerId: managerId,
                     managerName: managerName || null,
                     conditionsChanged,
                     comparison,

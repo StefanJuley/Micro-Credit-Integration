@@ -417,9 +417,9 @@
           <button
             :disabled="feedLoading"
             class="mi-action-btn mi-action-btn-primary"
-            @click="loadFeed"
+            @click="loadFeed(true)"
           >
-            {{ feedLoading ? 'Загрузка...' : 'Обновить' }}
+            {{ feedLoading ? 'Синхронизация...' : 'Обновить' }}
           </button>
           <UiButton appearance="secondary" @click="toggleArchiveView">
             {{ isArchiveView ? 'Активные' : 'Архив' }}
@@ -555,10 +555,18 @@ const companyOptions = [
   { value: 'iute-credit', label: 'Iute Credit' }
 ];
 
-const managerOptions = computed(() => [
-  { value: '', label: 'Все менеджеры' },
-  { value: 'my', label: currentUserDisplayName.value }
-]);
+const managerOptions = computed(() => {
+  const options = [{ value: '', label: 'Все заявки' }];
+
+  if (currentUserId.value) {
+    options.push({
+      value: String(currentUserId.value),
+      label: currentUserDisplayName.value
+    });
+  }
+
+  return options;
+});
 
 function getStatusFilterLabel(value: string): string {
   const opt = statusOptions.find(o => o.value === value);
@@ -608,7 +616,7 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
     if (companyFilter && item.creditCompany !== companyFilter) {
       return false;
     }
-    if (managerFilter === 'my' && item.managerId !== currentUserId.value) {
+    if (managerFilter && String(item.managerId) !== managerFilter) {
       return false;
     }
     if (query) {
@@ -1027,10 +1035,14 @@ function getCrmStatusText(status: string): string {
   return statusMap[status] || status || '-';
 }
 
-async function loadFeed() {
+async function loadFeed(sync = false) {
   feedLoading.value = true;
 
   try {
+    if (sync) {
+      await fetch(`${API_BASE}/api/feed/sync`, { method: 'POST' });
+    }
+
     const archiveParam = isArchiveView.value ? 'true' : 'false';
     const response = await fetch(`${API_BASE}/api/feed?archive=${archiveParam}`);
     const data = await response.json();
