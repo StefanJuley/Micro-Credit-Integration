@@ -220,35 +220,72 @@
     <div class="mi-feed-content">
       <div class="mi-feed-controls">
         <div class="mi-feed-filters-row">
-          <select
-            :value="feedStatusFilter"
-            class="mi-select mi-filter-select"
-            @change="onStatusFilterChange"
-          >
-            <option value="">Все статусы</option>
-            <option value="Processing">На проверке</option>
-            <option value="Approved">Одобрен</option>
-            <option value="conditions-changed">Условия изменены</option>
-            <option value="Refused">Отклонен</option>
-          </select>
-          <select
-            :value="feedCompanyFilter"
-            class="mi-select mi-filter-select"
-            @change="onCompanyFilterChange"
-          >
-            <option value="">Все компании</option>
-            <option value="microinvest">Microinvest</option>
-            <option value="easy-credit">Easy Credit</option>
-            <option value="iute-credit">Iute Credit</option>
-          </select>
-          <select
-            :value="feedManagerFilter"
-            class="mi-select mi-filter-select"
-            @change="onManagerFilterChange"
-          >
-            <option value="">Все менеджеры</option>
-            <option value="my">{{ currentUserDisplayName }}</option>
-          </select>
+          <div class="mi-dropdown" v-click-outside="() => statusDropdownOpen = false">
+            <button
+              type="button"
+              class="mi-dropdown-trigger"
+              :class="{ 'is-open': statusDropdownOpen, 'has-value': feedStatusFilter }"
+              @click="statusDropdownOpen = !statusDropdownOpen"
+            >
+              <span class="mi-dropdown-text">{{ getStatusFilterLabel(feedStatusFilter) }}</span>
+              <span class="mi-dropdown-arrow"></span>
+            </button>
+            <div v-if="statusDropdownOpen" class="mi-dropdown-menu">
+              <div
+                v-for="opt in statusOptions"
+                :key="opt.value"
+                class="mi-dropdown-item"
+                :class="{ 'is-selected': feedStatusFilter === opt.value }"
+                @click="selectStatusFilter(opt.value)"
+              >
+                {{ opt.label }}
+              </div>
+            </div>
+          </div>
+          <div class="mi-dropdown" v-click-outside="() => companyDropdownOpen = false">
+            <button
+              type="button"
+              class="mi-dropdown-trigger"
+              :class="{ 'is-open': companyDropdownOpen, 'has-value': feedCompanyFilter }"
+              @click="companyDropdownOpen = !companyDropdownOpen"
+            >
+              <span class="mi-dropdown-text">{{ getCompanyFilterLabel(feedCompanyFilter) }}</span>
+              <span class="mi-dropdown-arrow"></span>
+            </button>
+            <div v-if="companyDropdownOpen" class="mi-dropdown-menu">
+              <div
+                v-for="opt in companyOptions"
+                :key="opt.value"
+                class="mi-dropdown-item"
+                :class="{ 'is-selected': feedCompanyFilter === opt.value }"
+                @click="selectCompanyFilter(opt.value)"
+              >
+                {{ opt.label }}
+              </div>
+            </div>
+          </div>
+          <div class="mi-dropdown" v-click-outside="() => managerDropdownOpen = false">
+            <button
+              type="button"
+              class="mi-dropdown-trigger"
+              :class="{ 'is-open': managerDropdownOpen, 'has-value': feedManagerFilter }"
+              @click="managerDropdownOpen = !managerDropdownOpen"
+            >
+              <span class="mi-dropdown-text">{{ getManagerFilterLabel(feedManagerFilter) }}</span>
+              <span class="mi-dropdown-arrow"></span>
+            </button>
+            <div v-if="managerDropdownOpen" class="mi-dropdown-menu">
+              <div
+                v-for="opt in managerOptions"
+                :key="opt.value"
+                class="mi-dropdown-item"
+                :class="{ 'is-selected': feedManagerFilter === opt.value }"
+                @click="selectManagerFilter(opt.value)"
+              >
+                {{ opt.label }}
+              </div>
+            </div>
+          </div>
           <button
             class="mi-action-btn mi-action-btn-primary mi-filter-btn"
             @click="applyFilters"
@@ -421,7 +458,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, type Directive } from 'vue';
 import { useOrderCardContext as useOrder, useCurrentUserContext, useField } from '@retailcrm/embed-ui';
 import {
   UiButton,
@@ -430,6 +467,20 @@ import {
   UiTextbox,
   UiToolbarButton,
 } from '@retailcrm/embed-ui-v1-components/remote';
+
+const vClickOutside: Directive = {
+  mounted(el, binding) {
+    el._clickOutside = (event: MouseEvent) => {
+      if (!(el === event.target || el.contains(event.target as Node))) {
+        binding.value(event);
+      }
+    };
+    document.addEventListener('click', el._clickOutside);
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside);
+  }
+};
 
 const API_BASE = 'https://credit.pandashop.md';
 
@@ -485,6 +536,60 @@ const displayedFeedItems = ref<any[]>([]);
 const hasActiveFilters = ref(false);
 const isArchiveView = ref(false);
 
+const statusDropdownOpen = ref(false);
+const companyDropdownOpen = ref(false);
+const managerDropdownOpen = ref(false);
+
+const statusOptions = [
+  { value: '', label: 'Все статусы' },
+  { value: 'Processing', label: 'На проверке' },
+  { value: 'Approved', label: 'Одобрен' },
+  { value: 'conditions-changed', label: 'Условия изменены' },
+  { value: 'Refused', label: 'Отклонен' }
+];
+
+const companyOptions = [
+  { value: '', label: 'Все компании' },
+  { value: 'microinvest', label: 'Microinvest' },
+  { value: 'easy-credit', label: 'Easy Credit' },
+  { value: 'iute-credit', label: 'Iute Credit' }
+];
+
+const managerOptions = computed(() => [
+  { value: '', label: 'Все менеджеры' },
+  { value: 'my', label: currentUserDisplayName.value }
+]);
+
+function getStatusFilterLabel(value: string): string {
+  const opt = statusOptions.find(o => o.value === value);
+  return opt ? opt.label : 'Все статусы';
+}
+
+function getCompanyFilterLabel(value: string): string {
+  const opt = companyOptions.find(o => o.value === value);
+  return opt ? opt.label : 'Все компании';
+}
+
+function getManagerFilterLabel(value: string): string {
+  const opt = managerOptions.value.find(o => o.value === value);
+  return opt ? opt.label : 'Все менеджеры';
+}
+
+function selectStatusFilter(value: string) {
+  feedStatusFilter.value = value;
+  statusDropdownOpen.value = false;
+}
+
+function selectCompanyFilter(value: string) {
+  feedCompanyFilter.value = value;
+  companyDropdownOpen.value = false;
+}
+
+function selectManagerFilter(value: string) {
+  feedManagerFilter.value = value;
+  managerDropdownOpen.value = false;
+}
+
 function filterFeedItems(items: any[], statusFilter: string, companyFilter: string, managerFilter: string, searchQuery: string): any[] {
   const query = searchQuery.toLowerCase().trim();
   return items.filter(item => {
@@ -517,18 +622,6 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
     }
     return true;
   });
-}
-
-function onStatusFilterChange(e: Event) {
-  feedStatusFilter.value = (e.target as HTMLSelectElement).value;
-}
-
-function onCompanyFilterChange(e: Event) {
-  feedCompanyFilter.value = (e.target as HTMLSelectElement).value;
-}
-
-function onManagerFilterChange(e: Event) {
-  feedManagerFilter.value = (e.target as HTMLSelectElement).value;
 }
 
 function applyFilters() {
@@ -1833,6 +1926,108 @@ async function moveToDelivering(item: any) {
     &:hover {
       background: #e5e7eb;
     }
+  }
+}
+
+.mi-dropdown {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
+}
+
+.mi-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: #9ca3af;
+  }
+
+  &.is-open {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  }
+
+  &.has-value {
+    color: #111827;
+  }
+}
+
+.mi-dropdown-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+
+.mi-dropdown-arrow {
+  width: 0;
+  height: 0;
+  margin-left: 8px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #6b7280;
+  transition: transform 0.15s ease;
+
+  .is-open & {
+    transform: rotate(180deg);
+  }
+}
+
+.mi-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.15s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mi-dropdown-item {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s ease;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &.is-selected {
+    background: #eff6ff;
+    color: #2563eb;
+    font-weight: 500;
   }
 }
 </style>
