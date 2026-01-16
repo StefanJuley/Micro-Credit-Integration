@@ -733,10 +733,18 @@ class CreditService {
 
         const response = await microinvest.getMessages(orderData.loanApplicationId, newOnly);
 
+        const messages = response?.messageSet || [];
+        if (messages.length > 0) {
+            logger.info('Message structure sample', {
+                firstMessage: messages[0],
+                messageKeys: Object.keys(messages[0] || {})
+            });
+        }
+
         return {
             orderId,
             applicationId: orderData.loanApplicationId,
-            messages: response?.messageSet || [],
+            messages,
             success: true
         };
     }
