@@ -503,7 +503,8 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
       const orderNumber = String(item.orderNumber || '').toLowerCase();
       const customerName = String(item.customerName || '').toLowerCase();
       const applicationId = String(item.applicationId || '').toLowerCase();
-      if (!orderNumber.includes(query) && !customerName.includes(query) && !applicationId.includes(query)) {
+      const managerName = String(item.managerName || '').toLowerCase();
+      if (!orderNumber.includes(query) && !customerName.includes(query) && !applicationId.includes(query) && !managerName.includes(query)) {
         return false;
       }
     }
