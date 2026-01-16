@@ -147,7 +147,15 @@
               Нет сообщений
             </div>
             <div v-else class="mi-messages">
-              <div v-for="(msg, index) in messages" :key="index" class="mi-message-item">
+              <div
+                v-for="(msg, index) in messages"
+                :key="index"
+                :class="['mi-message-item', isOurMessage(msg) ? 'mi-message-ours' : 'mi-message-bank']"
+              >
+                <div class="mi-message-header">
+                  <span class="mi-message-sender">{{ msg.senderName || 'Неизвестно' }}</span>
+                  <span class="mi-message-date">{{ formatMessageDate(msg.date) }}</span>
+                </div>
                 <span class="mi-message-text">{{ msg.text || msg }}</span>
               </div>
             </div>
@@ -867,6 +875,22 @@ function formatAmount(amount: number): string {
   return new Intl.NumberFormat('ru-RU').format(amount) + ' MDL';
 }
 
+function isOurMessage(msg: any): boolean {
+  const senderId = msg.senderID || msg.senderId || '';
+  return senderId.startsWith('PAN');
+}
+
+function formatMessageDate(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function getStatusText(status: string): string {
   const statusMap: Record<string, string> = {
     'Placed': 'Размещена',
@@ -1304,14 +1328,42 @@ async function moveToDelivering(item: any) {
 
 .mi-message-item {
   padding: 8px 12px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
   border-radius: 6px;
+  max-width: 85%;
+}
+
+.mi-message-ours {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  margin-left: auto;
+}
+
+.mi-message-bank {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  margin-right: auto;
+}
+
+.mi-message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.mi-message-sender {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.mi-message-date {
+  color: #9ca3af;
 }
 
 .mi-message-text {
   font-size: 13px;
   color: #374151;
+  display: block;
 }
 
 .mi-message-input {
