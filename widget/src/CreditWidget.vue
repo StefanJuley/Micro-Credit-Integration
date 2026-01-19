@@ -1176,6 +1176,7 @@ function getStatusText(status: string): string {
 
 function getCrmStatusText(status: string): string {
   const statusMap: Record<string, string> = {
+    'not-paid': 'Не оплачен',
     'credit-check': 'На проверке',
     'credit-approved': 'Одобрен',
     'credit-declined': 'Отклонен',

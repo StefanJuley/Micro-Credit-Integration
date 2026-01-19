@@ -50,7 +50,7 @@ class SimlaClient {
     async getOrdersWithActiveApplications() {
         try {
             const companies = ['microinvest', 'easycredit'];
-            const statuses = ['credit-check', 'credit-approved', 'conditions-changed', 'credit-declined'];
+            const statuses = ['not-paid', 'credit-check', 'credit-approved', 'conditions-changed', 'credit-declined'];
 
             let orders = [];
 
