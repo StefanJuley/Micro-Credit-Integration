@@ -246,24 +246,37 @@ class EasyCreditClient {
         }
     }
 
-    async getContract(urn, language = 'RO') {
+    async getContract(urn, lang = 'RO') {
         try {
             const response = await this.client.post('/ECM_GetDocs_V2', {
                 ...this.credentials,
                 URN: urn,
-                Language: language
+                Lang: lang
             });
+
+            const result = response.data?.response;
 
             logger.debug('ECM_GetDocs_V2 response', {
                 urn,
-                hasFile: !!response.data?.response?.File
+                status: result?.Status,
+                hasDoc: !!result?.DocTypeA
             });
 
-            return response.data?.response;
+            return result;
         } catch (error) {
+            const status = error.response?.status;
+            const responseStatus = error.response?.data?.response?.Status;
+
+            if (status === 409 && responseStatus?.includes('not Approve')) {
+                logger.debug('Contract not available - loan not approved', { urn });
+                return null;
+            }
+
             logger.error('ECM_GetDocs_V2 failed', {
                 urn,
-                error: error.message
+                status,
+                error: error.message,
+                response: error.response?.data
             });
             throw error;
         }

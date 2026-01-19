@@ -1158,6 +1158,7 @@ function getStatusText(status: string): string {
     'Processing': 'В обработке',
     'Approved': 'Одобрена',
     'Refused': 'Отклонена',
+    'Rejected': 'Отклонена',
     'SignedPhysically': 'Одобрена',
     'SignedOnline': 'Одобрена',
     'Cancelled': 'Отменена',
@@ -1226,7 +1227,7 @@ function toggleArchiveView() {
 function getFeedItemClass(item: any): string {
   if (item.conditionsChanged) return 'conditions-changed';
   const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Disbursed', 'Settled'];
-  const refusedStatuses = ['Refused', 'IssueRejected', 'Canceled', 'Cancelled'];
+  const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled'];
   const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
   if (approvedStatuses.includes(item.bankStatus)) return 'approved';
   if (refusedStatuses.includes(item.bankStatus)) return 'refused';
@@ -1236,7 +1237,7 @@ function getFeedItemClass(item: any): string {
 
 function getStatusClass(status: string): string {
   const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically'];
-  const refusedStatuses = ['Refused', 'IssueRejected', 'Canceled', 'Cancelled'];
+  const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled'];
   const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
   const issuedStatuses = ['Issued', 'Disbursed', 'Settled'];
   if (approvedStatuses.includes(status)) return 'status-approved';

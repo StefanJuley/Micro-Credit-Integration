@@ -54,13 +54,14 @@ module.exports = {
         'Approved': 'credit-approved',
         'More Data': 'credit-check',
         'Refused': 'credit-declined',
+        'Rejected': 'credit-declined',
         'Canceled': 'credit-declined',
         'Disbursed': 'paid',
         'Settled': 'paid'
     },
 
     finalStatuses: ['Refused', 'Issued', 'IssueRejected'],
-    easyCreditFinalStatuses: ['Refused', 'Canceled', 'Disbursed', 'Settled'],
+    easyCreditFinalStatuses: ['Refused', 'Rejected', 'Canceled', 'Disbursed', 'Settled'],
 
     crmFields: {
         idnp: 'indp',

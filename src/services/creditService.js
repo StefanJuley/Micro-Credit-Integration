@@ -544,13 +544,13 @@ class CreditService {
             }
 
             const contractResponse = await easycredit.getContract(urn, 'RO');
-            if (!contractResponse?.File) {
+            if (!contractResponse?.DocTypeA) {
                 logger.debug('No Easy Credit contract available yet', { orderId, urn });
                 return;
             }
 
             const fileName = `contract_${urn}.pdf`;
-            await simla.uploadFileToOrder(orderId, fileName, contractResponse.File, site);
+            await simla.uploadFileToOrder(orderId, fileName, contractResponse.DocTypeA, site);
 
             logger.info('Easy Credit contract auto-attached to order', {
                 orderId,
@@ -959,13 +959,13 @@ class CreditService {
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
             const contractResponse = await easycredit.getContract(orderData.loanApplicationId, 'RO');
 
-            if (!contractResponse?.File) {
-                throw new Error('No contracts available for this application');
+            if (!contractResponse?.DocTypeA) {
+                throw new Error('Контракт пока недоступен. Заявка должна быть одобрена.');
             }
 
             files = [{
                 name: `contract_${orderData.loanApplicationId}.pdf`,
-                data: contractResponse.File
+                data: contractResponse.DocTypeA
             }];
         } else {
             const contractsResponse = await microinvest.getContracts(orderData.loanApplicationId);
