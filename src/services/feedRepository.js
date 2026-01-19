@@ -172,6 +172,39 @@ class FeedRepository {
         });
     }
 
+    async saveApplicationRequest(data) {
+        try {
+            return await prisma.applicationRequest.create({
+                data: {
+                    orderId: data.orderId,
+                    applicationId: data.applicationId,
+                    creditCompany: data.creditCompany,
+                    requestData: data.requestData,
+                    filesCount: data.filesCount || 0,
+                    fileNames: data.fileNames || []
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to save application request', {
+                applicationId: data.applicationId,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    async getApplicationRequest(applicationId) {
+        return await prisma.applicationRequest.findUnique({
+            where: { applicationId }
+        });
+    }
+
+    async getApplicationRequestByOrderId(orderId) {
+        return await prisma.applicationRequest.findFirst({
+            where: { orderId }
+        });
+    }
+
     async disconnect() {
         await prisma.$disconnect();
     }

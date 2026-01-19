@@ -216,6 +216,23 @@ class CreditService {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-check', order.site);
         }
 
+        try {
+            await feedRepository.saveApplicationRequest({
+                orderId,
+                applicationId: result.applicationID,
+                creditCompany: CREDIT_COMPANY_MICROINVEST,
+                requestData: applicationData,
+                filesCount: files.length,
+                fileNames: files.map(f => f.name)
+            });
+        } catch (saveError) {
+            logger.error('Failed to save application request data', {
+                orderId,
+                applicationId: result.applicationID,
+                error: saveError.message
+            });
+        }
+
         logger.info('Microinvest application submitted successfully', {
             orderId,
             applicationId: result.applicationID,
@@ -278,6 +295,23 @@ class CreditService {
 
         if (orderData.payment?.id) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-check', order.site);
+        }
+
+        try {
+            await feedRepository.saveApplicationRequest({
+                orderId,
+                applicationId: urn,
+                creditCompany: CREDIT_COMPANY_EASYCREDIT,
+                requestData: applicationData,
+                filesCount: files.length,
+                fileNames: files.map(f => f.name)
+            });
+        } catch (saveError) {
+            logger.error('Failed to save application request data', {
+                orderId,
+                applicationId: urn,
+                error: saveError.message
+            });
         }
 
         logger.info('Easy Credit application submitted successfully', {
@@ -1129,6 +1163,34 @@ class CreditService {
             applicationId: orderData.loanApplicationId,
             filesCount: files?.length || 0,
             success: true
+        };
+    }
+
+    async getApplicationRequestData(applicationId, orderId) {
+        let request = null;
+
+        if (applicationId) {
+            request = await feedRepository.getApplicationRequest(applicationId);
+        } else if (orderId) {
+            request = await feedRepository.getApplicationRequestByOrderId(orderId);
+        }
+
+        if (!request) {
+            return {
+                success: false,
+                error: 'Данные заявки не найдены. Они сохраняются только для новых заявок.'
+            };
+        }
+
+        return {
+            success: true,
+            orderId: request.orderId,
+            applicationId: request.applicationId,
+            creditCompany: request.creditCompany,
+            requestData: request.requestData,
+            filesCount: request.filesCount,
+            fileNames: request.fileNames,
+            createdAt: request.createdAt
         };
     }
 

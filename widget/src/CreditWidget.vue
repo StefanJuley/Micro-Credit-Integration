@@ -117,6 +117,17 @@
             >
               Скачать контракт
             </UiButton>
+
+            <UiButton
+              v-if="applicationId"
+              :loading="requestDataLoading"
+              :disabled="requestDataLoading"
+              appearance="secondary"
+              size="sm"
+              @click="loadRequestData"
+            >
+              Отправленные данные
+            </UiButton>
           </div>
 
           <div class="mi-actions-right">
@@ -143,6 +154,53 @@
           >
             {{ link.name }}
           </a>
+        </div>
+
+        <div v-if="requestData" class="mi-request-data-section">
+          <h4 class="mi-section-title">Отправленные данные в банк</h4>
+          <div class="mi-request-data">
+            <div class="mi-request-row">
+              <span class="mi-request-label">Дата отправки:</span>
+              <span class="mi-request-value">{{ formatRequestDate(requestData.createdAt) }}</span>
+            </div>
+            <div v-if="requestData.requestData?.goodsName" class="mi-request-row">
+              <span class="mi-request-label">Товар:</span>
+              <span class="mi-request-value">{{ requestData.requestData.goodsName }}</span>
+            </div>
+            <div v-if="requestData.requestData?.amount" class="mi-request-row">
+              <span class="mi-request-label">Сумма:</span>
+              <span class="mi-request-value">{{ formatAmount(requestData.requestData.amount) }}</span>
+            </div>
+            <div v-if="requestData.requestData?.term || requestData.requestData?.loanTerm" class="mi-request-row">
+              <span class="mi-request-label">Срок:</span>
+              <span class="mi-request-value">{{ requestData.requestData.term || requestData.requestData.loanTerm }} мес.</span>
+            </div>
+            <div v-if="requestData.requestData?.firstName || requestData.requestData?.name" class="mi-request-row">
+              <span class="mi-request-label">Имя:</span>
+              <span class="mi-request-value">{{ requestData.requestData.firstName || requestData.requestData.name }}</span>
+            </div>
+            <div v-if="requestData.requestData?.lastName || requestData.requestData?.surname" class="mi-request-row">
+              <span class="mi-request-label">Фамилия:</span>
+              <span class="mi-request-value">{{ requestData.requestData.lastName || requestData.requestData.surname }}</span>
+            </div>
+            <div v-if="requestData.requestData?.idnp" class="mi-request-row">
+              <span class="mi-request-label">IDNP:</span>
+              <span class="mi-request-value">{{ requestData.requestData.idnp }}</span>
+            </div>
+            <div v-if="requestData.requestData?.phone || requestData.requestData?.phoneCell" class="mi-request-row">
+              <span class="mi-request-label">Телефон:</span>
+              <span class="mi-request-value">{{ requestData.requestData.phone || requestData.requestData.phoneCell }}</span>
+            </div>
+            <div v-if="requestData.requestData?.birthDate" class="mi-request-row">
+              <span class="mi-request-label">Дата рождения:</span>
+              <span class="mi-request-value">{{ requestData.requestData.birthDate }}</span>
+            </div>
+            <div v-if="requestData.filesCount > 0" class="mi-request-row">
+              <span class="mi-request-label">Файлы:</span>
+              <span class="mi-request-value">{{ requestData.filesCount }} ({{ requestData.fileNames?.join(', ') || '-' }})</span>
+            </div>
+          </div>
+          <button class="mi-close-request-data" @click="requestData = null">Скрыть</button>
         </div>
 
         <div v-if="applicationId" class="mi-messages-section">
@@ -522,6 +580,7 @@ const cancelLoading = ref(false);
 const messagesLoading = ref(false);
 const sendingMessage = ref(false);
 const sendingFiles = ref(false);
+const requestDataLoading = ref(false);
 const message = ref('');
 const messageType = ref<'success' | 'error' | ''>('');
 
@@ -532,6 +591,7 @@ const messages = ref<any[]>([]);
 const newMessage = ref('');
 const showCancelDialog = ref(false);
 const cancelReason = ref('');
+const requestData = ref<any>(null);
 
 const isEasyCredit = computed(() => {
   return comparisonData.value?.creditCompany === 'easycredit';
@@ -888,6 +948,46 @@ async function getContracts() {
   } finally {
     contractsLoading.value = false;
   }
+}
+
+async function loadRequestData() {
+  if (!applicationId.value) return;
+
+  requestDataLoading.value = true;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/application-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: applicationId.value }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      requestData.value = data;
+    } else {
+      message.value = data.error || 'Данные заявки не найдены';
+      messageType.value = 'error';
+    }
+  } catch (err: any) {
+    message.value = `Ошибка: ${err.message}`;
+    messageType.value = 'error';
+  } finally {
+    requestDataLoading.value = false;
+  }
+}
+
+function formatRequestDate(dateStr: string | null): string {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 async function cancelApplication() {
@@ -1478,6 +1578,55 @@ async function moveToDelivering(item: any) {
   &:hover {
     background: #e0f2fe;
     text-decoration: underline;
+  }
+}
+
+.mi-request-data-section {
+  background: #f0fdf4;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #86efac;
+}
+
+.mi-request-data {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mi-request-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.mi-request-label {
+  color: #166534;
+  min-width: 120px;
+}
+
+.mi-request-value {
+  color: #14532d;
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+  word-break: break-word;
+}
+
+.mi-close-request-data {
+  margin-top: 12px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #166534;
+  background: transparent;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #dcfce7;
   }
 }
 

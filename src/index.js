@@ -313,6 +313,25 @@ app.post('/api/comparison-data', async (req, res) => {
     }
 });
 
+app.post('/api/application-request', async (req, res) => {
+    const { applicationId, orderId } = req.body;
+
+    if (!applicationId && !orderId) {
+        return res.status(400).json({ success: false, error: 'applicationId or orderId is required' });
+    }
+
+    try {
+        const result = await creditService.getApplicationRequestData(applicationId, orderId);
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to get application request data', { applicationId, orderId, error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 app.get('/api/feed', async (req, res) => {
     try {
         const filters = {};

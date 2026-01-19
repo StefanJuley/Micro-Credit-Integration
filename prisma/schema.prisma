@@ -57,3 +57,19 @@ model SentMessage {
   @@index([applicationId, sentAt])
   @@map("sent_messages")
 }
+
+model ApplicationRequest {
+  id            Int      @id @default(autoincrement())
+  orderId       Int
+  applicationId String   @unique
+  creditCompany String
+  requestData   Json
+  filesCount    Int      @default(0)
+  fileNames     String[]
+  createdAt     DateTime @default(now())
+
+  @@index([orderId])
+  @@index([applicationId])
+  @@index([creditCompany])
+  @@map("application_requests")
+}
