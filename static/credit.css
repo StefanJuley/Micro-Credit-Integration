@@ -88,6 +88,13 @@
 .mi-comparison-row.mismatch {
   background: #fee2e2;
 }
+.mi-comparison-row.rejected {
+  background: #fee2e2;
+}
+.mi-rejected-value {
+  color: #dc2626;
+  font-weight: 600;
+}
 .mi-comparison-label {
   font-size: 13px;
   color: #374151;

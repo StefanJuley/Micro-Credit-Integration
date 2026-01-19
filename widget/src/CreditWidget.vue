@@ -51,27 +51,31 @@
         </div>
 
         <div v-if="comparisonData?.requested" class="mi-comparison-section">
-          <h4 class="mi-section-title">{{ comparisonData?.approved ? 'Сравнение условий' : 'Запрошенные условия' }}</h4>
+          <h4 class="mi-section-title">{{ getComparisonTitle }}</h4>
           <div class="mi-comparison-table">
             <div class="mi-comparison-header">
               <span></span>
               <span>Запрошено</span>
               <span v-if="comparisonData?.approved">Одобрено</span>
+              <span v-else-if="isRejected">Отклонено</span>
             </div>
-            <div :class="['mi-comparison-row', comparisonData?.approved ? (comparisonData.comparison?.amountMatch ? 'match' : 'mismatch') : '']">
+            <div :class="['mi-comparison-row', getComparisonRowClass('amount')]">
               <span class="mi-comparison-label">Сумма</span>
               <span class="mi-comparison-value">{{ formatAmount(comparisonData.requested?.amount) }}</span>
               <span v-if="comparisonData?.approved" class="mi-comparison-value">{{ formatAmount(comparisonData.approved?.amount) }}</span>
+              <span v-else-if="isRejected" class="mi-comparison-value mi-rejected-value">-</span>
             </div>
-            <div :class="['mi-comparison-row', comparisonData?.approved ? (comparisonData.comparison?.termMatch ? 'match' : 'mismatch') : '']">
+            <div :class="['mi-comparison-row', getComparisonRowClass('term')]">
               <span class="mi-comparison-label">Срок</span>
               <span class="mi-comparison-value">{{ comparisonData.requested?.term }} мес.</span>
               <span v-if="comparisonData?.approved" class="mi-comparison-value">{{ comparisonData.approved?.term }} мес.</span>
+              <span v-else-if="isRejected" class="mi-comparison-value mi-rejected-value">-</span>
             </div>
-            <div :class="['mi-comparison-row', comparisonData?.approved ? (comparisonData.comparison?.productMatch ? 'match' : 'mismatch') : '']">
+            <div :class="['mi-comparison-row', getComparisonRowClass('product')]">
               <span class="mi-comparison-label">Тип</span>
               <span class="mi-comparison-value">{{ comparisonData.requested?.productType }}</span>
               <span v-if="comparisonData?.approved" class="mi-comparison-value">{{ comparisonData.approved?.productType }}</span>
+              <span v-else-if="isRejected" class="mi-comparison-value mi-rejected-value">-</span>
             </div>
           </div>
           <div v-if="comparisonData?.approved && comparisonData.comparison?.hasChanges" class="mi-warning">
@@ -638,6 +642,21 @@ const requestData = ref<any>(null);
 
 const isEasyCredit = computed(() => {
   return comparisonData.value?.creditCompany === 'easycredit';
+});
+
+const isRejected = computed(() => {
+  const status = comparisonData.value?.bankStatus;
+  return status === 'Refused' || status === 'Rejected';
+});
+
+const getComparisonTitle = computed(() => {
+  if (isRejected.value) {
+    return 'Заявка отклонена';
+  }
+  if (comparisonData.value?.comparison?.hasChanges) {
+    return 'Сравнение условий';
+  }
+  return 'Условия кредита';
 });
 
 const canSendMessage = computed(() => {
@@ -1236,6 +1255,29 @@ function formatAmount(amount: number): string {
   return new Intl.NumberFormat('ru-RU').format(amount) + ' MDL';
 }
 
+function getComparisonRowClass(type: string): string {
+  if (isRejected.value) {
+    return 'rejected';
+  }
+  if (!comparisonData.value?.approved) {
+    return '';
+  }
+  const requested = comparisonData.value.requested;
+  const approved = comparisonData.value.approved;
+  if (!requested || !approved) return '';
+
+  if (type === 'amount') {
+    return requested.amount === approved.amount ? 'match' : 'mismatch';
+  }
+  if (type === 'term') {
+    return requested.term === approved.term ? 'match' : 'mismatch';
+  }
+  if (type === 'product') {
+    return requested.productType === approved.productType ? 'match' : 'mismatch';
+  }
+  return '';
+}
+
 function isOurMessage(msg: any): boolean {
   const senderId = msg.senderID || msg.senderId || '';
   return senderId.startsWith('PAN');
@@ -1597,6 +1639,15 @@ async function moveToDelivering(item: any) {
   &.mismatch {
     background: #fee2e2;
   }
+
+  &.rejected {
+    background: #fee2e2;
+  }
+}
+
+.mi-rejected-value {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .mi-comparison-label {
