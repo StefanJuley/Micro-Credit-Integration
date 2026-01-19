@@ -37,7 +37,7 @@
             </div>
             <div v-if="isEasyCredit && comparisonData.documentStatus" class="mi-row">
               <span class="mi-label">Статус документов:</span>
-              <span class="mi-value">{{ comparisonData.documentStatus }}</span>
+              <span class="mi-value">{{ getDocumentStatusText(comparisonData.documentStatus) }}</span>
             </div>
             <div class="mi-row">
               <span class="mi-label">Статус в CRM:</span>
@@ -380,7 +380,7 @@
             </div>
             <div v-if="item.documentStatus && item.creditCompany === 'easycredit'" class="mi-feed-row">
               <span class="mi-feed-label">Документы:</span>
-              <span class="mi-feed-value">{{ item.documentStatus }}</span>
+              <span class="mi-feed-value">{{ getDocumentStatusText(item.documentStatus) }}</span>
             </div>
             <div v-if="item.managerName" class="mi-feed-row">
               <span class="mi-feed-label">Менеджер:</span>
@@ -1042,6 +1042,19 @@ function getCreditCompanyName(company: string): string {
     'easycredit': 'Easy Credit',
   };
   return companyMap[company] || company || '-';
+}
+
+function getDocumentStatusText(status: string): string {
+  const statusMap: Record<string, string> = {
+    'Currently At Shop': 'В магазине',
+    'Received By EasyCredit': 'Получено Easy Credit',
+    'Received FCopy': 'Получена копия',
+    'Checked By EasyCredit': 'Проверено Easy Credit',
+    'Identified La Distanta': 'Идентифицирован онлайн',
+    'Sign and Receive La Distanta': 'Подписано онлайн',
+    'Not Identified La Distanta': 'Не идентифицирован',
+  };
+  return statusMap[status] || status || '-';
 }
 
 function getStatusText(status: string): string {
