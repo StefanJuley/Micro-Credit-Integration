@@ -34,7 +34,7 @@ class MicroinvestClient {
 
     async checkIdnp(idnp) {
         try {
-            const response = await this.client.post('/CheckIDNP', null, {
+            const response = await this.client.post('/CheckIDNP', {}, {
                 headers: { ...this.client.defaults.headers, 'IDNP': idnp }
             });
             logger.debug('CheckIDNP response', { idnp });
@@ -74,7 +74,7 @@ class MicroinvestClient {
 
     async checkApplicationStatus(applicationId) {
         try {
-            const response = await this.client.post('/CheckApplicationStatus', null, {
+            const response = await this.client.post('/CheckApplicationStatus', {}, {
                 headers: {
                     ...this.client.defaults.headers,
                     'applicationID': applicationId
@@ -102,7 +102,7 @@ class MicroinvestClient {
 
     async getContracts(applicationId) {
         try {
-            const response = await this.client.post('/GetContracts', null, {
+            const response = await this.client.post('/GetContracts', {}, {
                 headers: {
                     ...this.client.defaults.headers,
                     'applicationID': applicationId
