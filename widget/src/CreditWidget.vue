@@ -1074,15 +1074,11 @@ async function sendFilesToBank() {
   message.value = '';
 
   try {
-    const response = await fetch(`${API_BASE}/api/send-message`, {
+    const response = await fetch(`${API_BASE}/api/send-files`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        orderId: orderId.value,
-        text: 'Прикрепляю документы',
-        withFiles: true,
-        managerId: currentUserId.value,
-        managerName: currentUserDisplayName.value
+        orderId: orderId.value
       }),
     });
 
@@ -1091,7 +1087,6 @@ async function sendFilesToBank() {
     if (data.success) {
       message.value = `Документы отправлены (${data.filesCount} файлов)`;
       messageType.value = 'success';
-      await loadMessages();
     } else {
       message.value = `Ошибка: ${data.error || 'Не удалось отправить документы'}`;
       messageType.value = 'error';
