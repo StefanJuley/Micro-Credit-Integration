@@ -1,9 +1,13 @@
 const microinvest = require('../clients/microinvest');
+const easycredit = require('../clients/easycredit');
 const simla = require('../clients/simla');
 const config = require('../config');
 const logger = require('../utils/logger');
 const feedRepository = require('./feedRepository');
 const { ARCHIVED_ORDER_STATUSES } = require('./feedRepository');
+
+const CREDIT_COMPANY_EASYCREDIT = 'easycredit';
+const CREDIT_COMPANY_MICROINVEST = 'microinvest';
 
 const productIdToName = Object.entries(config.loanProducts).reduce((acc, [key, id]) => {
     acc[id] = key;
@@ -48,6 +52,47 @@ class CreditService {
         return '+373' + cleaned;
     }
 
+    formatPhoneForEasyCredit(phone) {
+        if (!phone) return null;
+        let cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('373')) {
+            cleaned = '0' + cleaned.substring(3);
+        }
+        if (!cleaned.startsWith('0')) {
+            cleaned = '0' + cleaned;
+        }
+        return cleaned;
+    }
+
+    getCreditCompany(orderData) {
+        const company = Array.isArray(orderData.creditCompany)
+            ? orderData.creditCompany[0]
+            : orderData.creditCompany;
+        return company || CREDIT_COMPANY_MICROINVEST;
+    }
+
+    getEasyCreditProductId(term) {
+        if (term >= 6 && term <= 11) return 54;
+        if (term === 12) return 55;
+        if (term >= 13 && term <= 18) return 56;
+        if (term >= 19 && term <= 24) return 57;
+        if (term >= 25 && term <= 36) return 58;
+        return 54;
+    }
+
+    getGoodsNameFromOrder(order) {
+        if (!order.items || order.items.length === 0) {
+            return 'Товар';
+        }
+        if (order.items.length === 1) {
+            return order.items[0].offer?.displayName || order.items[0].offer?.name || 'Товар';
+        }
+        const names = order.items.map(item =>
+            item.offer?.displayName || item.offer?.name || 'Товар'
+        );
+        return names.join(', ').substring(0, 200);
+    }
+
     async submitApplication(orderId) {
         logger.info('Submitting application for order', { orderId });
 
@@ -71,19 +116,16 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         logger.debug('Order custom fields', {
             orderId,
             customFields: order.customFields,
-            creditCompany: orderData.creditCompany
+            creditCompany
         });
 
-        const creditCompanyValue = Array.isArray(orderData.creditCompany)
-            ? orderData.creditCompany[0]
-            : orderData.creditCompany;
-
-        if (creditCompanyValue !== 'microinvest') {
-            throw new Error(`Order ${orderId} is not for Microinvest (company: ${creditCompanyValue})`);
+        if (creditCompany !== CREDIT_COMPANY_MICROINVEST && creditCompany !== CREDIT_COMPANY_EASYCREDIT) {
+            throw new Error(`Order ${orderId} has unknown credit company: ${creditCompany}`);
         }
 
         if (orderData.loanApplicationId) {
@@ -118,13 +160,21 @@ class CreditService {
             throw new Error(`Order ${orderId} has no credit payment`);
         }
 
-        const loanProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
-
         const files = await simla.getOrderFilesAsBase64(orderId, order.site);
 
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            return await this._submitEasyCreditApplication(orderId, order, orderData, files);
+        } else {
+            return await this._submitMicroinvestApplication(orderId, order, orderData, files);
+        }
+    }
+
+    async _submitMicroinvestApplication(orderId, order, orderData, files) {
         if (files.length === 0) {
             throw new Error(`Необходимо прикрепить фото паспорта к заказу`);
         }
+
+        const loanProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
 
         const applicationData = {
             idnp: orderData.idnp,
@@ -152,7 +202,7 @@ class CreditService {
             });
         }
 
-        logger.debug('Application data prepared', { orderId, applicationData: { ...applicationData, fileAttachmentSet: applicationData.fileAttachmentSet ? `[${applicationData.fileAttachmentSet.length} files]` : undefined } });
+        logger.debug('Microinvest application data prepared', { orderId });
 
         const result = await microinvest.importLoanApplication(applicationData);
 
@@ -166,7 +216,7 @@ class CreditService {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-check', order.site);
         }
 
-        logger.info('Application submitted successfully', {
+        logger.info('Microinvest application submitted successfully', {
             orderId,
             applicationId: result.applicationID,
             filesCount: files.length
@@ -175,6 +225,70 @@ class CreditService {
         return {
             orderId,
             applicationId: result.applicationID,
+            filesCount: files.length,
+            success: true
+        };
+    }
+
+    async _submitEasyCreditApplication(orderId, order, orderData, files) {
+        const productId = this.getEasyCreditProductId(parseInt(orderData.creditTerm) || 6);
+        const firstInstallmentDate = easycredit.calculateFirstInstallmentDate(20);
+
+        const applicationData = {
+            productId,
+            idnp: orderData.idnp,
+            birthDate: this.formatBirthday(orderData.birthday),
+            firstName: orderData.name || '',
+            lastName: orderData.surname || '',
+            phone: this.formatPhoneForEasyCredit(orderData.phone),
+            goodsName: this.getGoodsNameFromOrder(order),
+            amount: parseFloat(orderData.payment.amount),
+            term: parseInt(orderData.creditTerm) || 6,
+            firstInstallmentDate
+        };
+
+        logger.debug('Easy Credit application data prepared', { orderId, productId });
+
+        const result = await easycredit.createRequest(applicationData);
+
+        if (result?.Status !== 'OK' || !result?.URN) {
+            throw new Error(result?.Status || 'No URN in response');
+        }
+
+        const urn = result.URN;
+
+        if (files.length > 0) {
+            try {
+                await easycredit.uploadFiles(urn, files);
+                logger.info('Files uploaded to Easy Credit', {
+                    orderId,
+                    urn,
+                    filesCount: files.length
+                });
+            } catch (uploadError) {
+                logger.error('Failed to upload files to Easy Credit', {
+                    orderId,
+                    urn,
+                    error: uploadError.message
+                });
+            }
+        }
+
+        await simla.updateOrderWithApplicationId(orderId, urn, order.site);
+
+        if (orderData.payment?.id) {
+            await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-check', order.site);
+        }
+
+        logger.info('Easy Credit application submitted successfully', {
+            orderId,
+            urn,
+            filesCount: files.length
+        });
+
+        return {
+            orderId,
+            applicationId: urn,
             filesCount: files.length,
             success: true
         };
@@ -224,12 +338,21 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         if (!orderData.loanApplicationId) {
             logger.debug('Order has no application ID', { orderId });
             return null;
         }
 
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            return await this._checkEasyCreditStatus(orderId, order, orderData);
+        } else {
+            return await this._checkMicroinvestStatus(orderId, order, orderData);
+        }
+    }
+
+    async _checkMicroinvestStatus(orderId, order, orderData) {
         const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
 
         if (!bankStatus) {
@@ -280,6 +403,118 @@ class CreditService {
             crmStatus,
             isFinal: config.finalStatuses.includes(bankStatus.status)
         };
+    }
+
+    async _checkEasyCreditStatus(orderId, order, orderData) {
+        const statusResponse = await easycredit.checkStatus(orderData.loanApplicationId);
+
+        if (!statusResponse || statusResponse.Status !== 'OK') {
+            logger.debug('Easy Credit status not available', {
+                orderId,
+                urn: orderData.loanApplicationId,
+                status: statusResponse?.Status
+            });
+            return null;
+        }
+
+        const requestStatus = statusResponse.RequestStatus;
+        const documentStatus = statusResponse.DocumentStatus;
+
+        let crmStatus = config.easyCreditStatusMapping[requestStatus];
+
+        if (!crmStatus) {
+            logger.warn('Unknown Easy Credit status', { orderId, requestStatus });
+            return null;
+        }
+
+        if (crmStatus === 'credit-approved' && requestStatus === 'Approved') {
+            const hasChanges = this.checkEasyCreditConditionsChanged(orderData, statusResponse);
+            if (hasChanges) {
+                crmStatus = 'conditions-changed';
+                logger.info('Easy Credit changed conditions', {
+                    orderId,
+                    urn: orderData.loanApplicationId
+                });
+            }
+        }
+
+        if (orderData.payment && orderData.payment.status !== crmStatus) {
+            await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
+
+            logger.info('Order status updated (Easy Credit)', {
+                orderId,
+                urn: orderData.loanApplicationId,
+                requestStatus,
+                documentStatus,
+                crmStatus
+            });
+        }
+
+        if (requestStatus === 'Approved' && orderData.payment?.type === 'credit') {
+            await this.autoAttachEasyCreditContracts(orderId, orderData.loanApplicationId, order.site);
+        }
+
+        return {
+            orderId,
+            applicationId: orderData.loanApplicationId,
+            bankStatus: requestStatus,
+            documentStatus,
+            crmStatus,
+            isFinal: config.easyCreditFinalStatuses.includes(requestStatus)
+        };
+    }
+
+    checkEasyCreditConditionsChanged(orderData, statusResponse) {
+        const requestedAmount = parseFloat(orderData.payment?.amount) || 0;
+        const requestedTerm = parseInt(orderData.creditTerm) || 0;
+
+        const approvedAmount = statusResponse.LoanAmount || 0;
+        const approvedTerm = statusResponse.Installments || 0;
+
+        const amountChanged = Math.abs(requestedAmount - approvedAmount) > 1;
+        const termChanged = requestedTerm !== approvedTerm;
+
+        if (amountChanged || termChanged) {
+            logger.debug('Easy Credit conditions comparison', {
+                requested: { amount: requestedAmount, term: requestedTerm },
+                approved: { amount: approvedAmount, term: approvedTerm },
+                changes: { amountChanged, termChanged }
+            });
+            return true;
+        }
+
+        return false;
+    }
+
+    async autoAttachEasyCreditContracts(orderId, urn, site) {
+        try {
+            const hasContracts = await simla.checkOrderHasContractFiles(orderId, site);
+            if (hasContracts) {
+                logger.debug('Contracts already attached', { orderId, urn });
+                return;
+            }
+
+            const contractResponse = await easycredit.getContract(urn, 'RO');
+            if (!contractResponse?.File) {
+                logger.debug('No Easy Credit contract available yet', { orderId, urn });
+                return;
+            }
+
+            const fileName = `contract_${urn}.pdf`;
+            await simla.uploadFileToOrder(orderId, fileName, contractResponse.File, site);
+
+            logger.info('Easy Credit contract auto-attached to order', {
+                orderId,
+                urn,
+                fileName
+            });
+        } catch (error) {
+            logger.error('Auto-attach Easy Credit contract failed', {
+                orderId,
+                urn,
+                error: error.message
+            });
+        }
     }
 
     async autoAttachContracts(orderId, applicationId, site) {
@@ -638,21 +873,37 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         if (!orderData.loanApplicationId) {
             throw new Error(`Order ${orderId} has no application ID`);
         }
 
-        const contractsResponse = await microinvest.getContracts(orderData.loanApplicationId);
+        let files = [];
 
-        if (!contractsResponse?.fileAttachmentSet || contractsResponse.fileAttachmentSet.length === 0) {
-            throw new Error('No contracts available for this application');
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            const contractResponse = await easycredit.getContract(orderData.loanApplicationId, 'RO');
+
+            if (!contractResponse?.File) {
+                throw new Error('No contracts available for this application');
+            }
+
+            files = [{
+                name: `contract_${orderData.loanApplicationId}.pdf`,
+                data: contractResponse.File
+            }];
+        } else {
+            const contractsResponse = await microinvest.getContracts(orderData.loanApplicationId);
+
+            if (!contractsResponse?.fileAttachmentSet || contractsResponse.fileAttachmentSet.length === 0) {
+                throw new Error('No contracts available for this application');
+            }
+
+            files = contractsResponse.fileAttachmentSet.map(file => ({
+                name: file.name || `contract_${orderData.loanApplicationId}.pdf`,
+                data: file.data
+            }));
         }
-
-        const files = contractsResponse.fileAttachmentSet.map(file => ({
-            name: file.name || `contract_${orderData.loanApplicationId}.pdf`,
-            data: file.data
-        }));
 
         const hasContracts = await simla.checkOrderHasContractFiles(orderId, order.site);
         if (!hasContracts) {
@@ -697,12 +948,17 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         if (!orderData.loanApplicationId) {
             throw new Error(`Order ${orderId} has no application ID`);
         }
 
-        await microinvest.sendRefuseRequest(orderData.loanApplicationId, reason);
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            await easycredit.cancelRequest(orderData.loanApplicationId);
+        } else {
+            await microinvest.sendRefuseRequest(orderData.loanApplicationId, reason);
+        }
 
         if (orderData.payment) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-declined', order.site);
@@ -711,6 +967,7 @@ class CreditService {
         logger.info('Application refused successfully', {
             orderId,
             applicationId: orderData.loanApplicationId,
+            creditCompany,
             reason
         });
 
@@ -728,9 +985,32 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         if (!orderData.loanApplicationId) {
             throw new Error(`Order ${orderId} has no application ID`);
+        }
+
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            const statusResponse = await easycredit.checkStatus(orderData.loanApplicationId);
+            const messages = [];
+
+            if (statusResponse?.Message && statusResponse.Message.trim() && statusResponse.Message !== ' # ') {
+                messages.push({
+                    date: new Date().toISOString(),
+                    senderName: 'Easy Credit',
+                    senderID: 'easycredit',
+                    text: statusResponse.Message
+                });
+            }
+
+            return {
+                orderId,
+                applicationId: orderData.loanApplicationId,
+                messages,
+                isEasyCredit: true,
+                success: true
+            };
         }
 
         const response = await microinvest.getMessages(orderData.loanApplicationId, newOnly);
@@ -774,9 +1054,14 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         if (!orderData.loanApplicationId) {
             throw new Error(`Order ${orderId} has no application ID`);
+        }
+
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            throw new Error('Easy Credit не поддерживает отправку сообщений. Банк отправляет комментарии в одностороннем порядке.');
         }
 
         let files = null;

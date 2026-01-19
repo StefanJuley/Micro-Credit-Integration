@@ -25,11 +25,19 @@
             <span class="mi-label">ID заявки:</span>
             <span class="mi-value">{{ applicationId }}</span>
           </div>
+          <div v-if="comparisonData?.creditCompany" class="mi-row">
+            <span class="mi-label">Кредитная компания:</span>
+            <span class="mi-value">{{ getCreditCompanyName(comparisonData.creditCompany) }}</span>
+          </div>
 
           <div v-if="comparisonData" class="mi-status-info">
             <div class="mi-row">
               <span class="mi-label">Статус в банке:</span>
               <span class="mi-value">{{ getStatusText(comparisonData.bankStatus) }}</span>
+            </div>
+            <div v-if="isEasyCredit && comparisonData.documentStatus" class="mi-row">
+              <span class="mi-label">Статус документов:</span>
+              <span class="mi-value">{{ comparisonData.documentStatus }}</span>
             </div>
             <div class="mi-row">
               <span class="mi-label">Статус в CRM:</span>
@@ -160,7 +168,10 @@
               </div>
             </div>
           </div>
-          <div class="mi-message-input">
+          <div v-if="isEasyCredit" class="mi-easycredit-notice">
+            Easy Credit не поддерживает отправку сообщений. Комментарии от банка отображаются выше.
+          </div>
+          <div v-else class="mi-message-input">
             <div class="mi-textbox-wrapper">
               <UiTextbox
                 :value="newMessage"
@@ -179,7 +190,7 @@
               Отправить
             </UiButton>
           </div>
-          <div class="mi-send-files">
+          <div v-if="!isEasyCredit" class="mi-send-files">
             <UiButton
               :loading="sendingFiles"
               appearance="secondary"
@@ -341,6 +352,10 @@
               <span class="mi-feed-label">ID заявки:</span>
               <span class="mi-feed-value">{{ item.applicationId }}</span>
             </div>
+            <div v-if="item.creditCompany" class="mi-feed-row">
+              <span class="mi-feed-label">Компания:</span>
+              <span class="mi-feed-value">{{ getCreditCompanyName(item.creditCompany) }}</span>
+            </div>
             <div v-if="item.comparison && item.comparison.requested" class="mi-feed-row">
               <span class="mi-feed-label">Сумма:</span>
               <span class="mi-feed-value">
@@ -362,6 +377,10 @@
             <div v-if="item.orderStatus" class="mi-feed-row">
               <span class="mi-feed-label">Статус заказа:</span>
               <span class="mi-feed-value">{{ getOrderStatusText(item.orderStatus) }}</span>
+            </div>
+            <div v-if="item.documentStatus && item.creditCompany === 'easycredit'" class="mi-feed-row">
+              <span class="mi-feed-label">Документы:</span>
+              <span class="mi-feed-value">{{ item.documentStatus }}</span>
             </div>
             <div v-if="item.managerName" class="mi-feed-row">
               <span class="mi-feed-label">Менеджер:</span>
@@ -514,7 +533,12 @@ const newMessage = ref('');
 const showCancelDialog = ref(false);
 const cancelReason = ref('');
 
+const isEasyCredit = computed(() => {
+  return comparisonData.value?.creditCompany === 'easycredit';
+});
+
 const canSendMessage = computed(() => {
+  if (isEasyCredit.value) return false;
   return newMessage.value.trim().length > 0 && !sendingMessage.value;
 });
 
@@ -551,8 +575,7 @@ const statusOptions = [
 const companyOptions = [
   { value: '', label: 'Все компании' },
   { value: 'microinvest', label: 'Microinvest' },
-  { value: 'easy-credit', label: 'Easy Credit' },
-  { value: 'iute-credit', label: 'Iute Credit' }
+  { value: 'easycredit', label: 'Easy Credit' }
 ];
 
 const managerOptions = computed(() => {
@@ -661,7 +684,12 @@ watch(showFeedModal, (opened) => {
 
 const canCancel = computed(() => {
   const status = comparisonData.value?.bankStatus;
-  return status && !['Refused', 'Issued', 'IssueRejected', 'SignedOnline', 'SignedPhysically'].includes(status);
+  if (!status) return false;
+  const uncancelableStatuses = [
+    'Refused', 'Issued', 'IssueRejected', 'SignedOnline', 'SignedPhysically',
+    'Canceled', 'Cancelled', 'Disbursed', 'Settled'
+  ];
+  return !uncancelableStatuses.includes(status);
 });
 
 async function handleSubmit() {
@@ -1007,6 +1035,14 @@ function formatMessageDate(dateStr: string | null): string {
   });
 }
 
+function getCreditCompanyName(company: string): string {
+  const companyMap: Record<string, string> = {
+    'microinvest': 'Microinvest',
+    'easycredit': 'Easy Credit',
+  };
+  return companyMap[company] || company || '-';
+}
+
 function getStatusText(status: string): string {
   const statusMap: Record<string, string> = {
     'Placed': 'Размещена',
@@ -1016,9 +1052,14 @@ function getStatusText(status: string): string {
     'SignedPhysically': 'Одобрена',
     'SignedOnline': 'Одобрена',
     'Cancelled': 'Отменена',
+    'Canceled': 'Отменена',
     'Issued': 'Выдано',
     'PendingIssue': 'Ожидает выдачи',
     'IssueRejected': 'Выдача отклонена',
+    'New': 'Новая',
+    'More Data': 'Требуются данные',
+    'Disbursed': 'Выдан',
+    'Settled': 'Погашен',
   };
   return statusMap[status] || status || '-';
 }
@@ -1075,17 +1116,24 @@ function toggleArchiveView() {
 
 function getFeedItemClass(item: any): string {
   if (item.conditionsChanged) return 'conditions-changed';
-  if (item.bankStatus === 'Approved' || item.bankStatus === 'SignedOnline' || item.bankStatus === 'SignedPhysically') return 'approved';
-  if (item.bankStatus === 'Refused' || item.bankStatus === 'IssueRejected') return 'refused';
-  if (item.bankStatus === 'Processing' || item.bankStatus === 'Placed') return 'processing';
+  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Disbursed', 'Settled'];
+  const refusedStatuses = ['Refused', 'IssueRejected', 'Canceled', 'Cancelled'];
+  const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
+  if (approvedStatuses.includes(item.bankStatus)) return 'approved';
+  if (refusedStatuses.includes(item.bankStatus)) return 'refused';
+  if (processingStatuses.includes(item.bankStatus)) return 'processing';
   return '';
 }
 
 function getStatusClass(status: string): string {
-  if (status === 'Approved' || status === 'SignedOnline' || status === 'SignedPhysically') return 'status-approved';
-  if (status === 'Refused' || status === 'IssueRejected') return 'status-refused';
-  if (status === 'Processing' || status === 'Placed') return 'status-processing';
-  if (status === 'Issued') return 'status-issued';
+  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically'];
+  const refusedStatuses = ['Refused', 'IssueRejected', 'Canceled', 'Cancelled'];
+  const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
+  const issuedStatuses = ['Issued', 'Disbursed', 'Settled'];
+  if (approvedStatuses.includes(status)) return 'status-approved';
+  if (refusedStatuses.includes(status)) return 'status-refused';
+  if (processingStatuses.includes(status)) return 'status-processing';
+  if (issuedStatuses.includes(status)) return 'status-issued';
   return '';
 }
 
@@ -1493,6 +1541,15 @@ async function moveToDelivering(item: any) {
 
 .mi-send-files {
   margin-top: 8px;
+}
+
+.mi-easycredit-notice {
+  padding: 10px 12px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 13px;
 }
 
 .mi-textbox-wrapper {

@@ -15,6 +15,7 @@ model FeedItem {
   creditCompany    String?
   customerName     String
   bankStatus       String
+  documentStatus   String?
   crmStatus        String?
   paymentType      String?
   orderStatus      String?
@@ -31,6 +32,7 @@ model FeedItem {
   @@index([creditCompany])
   @@index([orderStatus])
   @@index([managerId])
+  @@index([documentStatus])
   @@map("feed_items")
 }
 

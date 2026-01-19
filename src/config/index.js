@@ -12,6 +12,14 @@ module.exports = {
         apiKey: process.env.MICROINVEST_API_KEY
     },
 
+    easycredit: {
+        apiUrl: process.env.EASYCREDIT_API_URL,
+        filesUrl: process.env.EASYCREDIT_FILES_URL,
+        login: process.env.EASYCREDIT_LOGIN,
+        password: process.env.EASYCREDIT_PASSWORD,
+        environment: process.env.EASYCREDIT_ENVIRONMENT || 'TEST'
+    },
+
     simla: {
         apiUrl: process.env.SIMLA_API_URL,
         apiKey: process.env.SIMLA_API_KEY
@@ -41,7 +49,18 @@ module.exports = {
         'IssueRejected': 'credit-declined'
     },
 
+    easyCreditStatusMapping: {
+        'New': 'credit-check',
+        'Approved': 'credit-approved',
+        'More Data': 'credit-check',
+        'Refused': 'credit-declined',
+        'Canceled': 'credit-declined',
+        'Disbursed': 'paid',
+        'Settled': 'paid'
+    },
+
     finalStatuses: ['Refused', 'Issued', 'IssueRejected'],
+    easyCreditFinalStatuses: ['Refused', 'Canceled', 'Disbursed', 'Settled'],
 
     crmFields: {
         idnp: 'indp',
