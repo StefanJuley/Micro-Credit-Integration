@@ -1,4 +1,5 @@
 const winston = require('winston');
+require('winston-daily-rotate-file');
 const config = require('../config');
 
 const consoleTransport = new winston.transports.Console({
@@ -16,6 +17,35 @@ consoleTransport.on('error', (err) => {
     }
 });
 
+const fileRotateTransport = new winston.transports.DailyRotateFile({
+    filename: 'logs/app-%DATE%.log',
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '30d',
+    format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+            return `${timestamp} [${level.toUpperCase()}]: ${message} ${metaStr}`;
+        })
+    )
+});
+
+const errorRotateTransport = new winston.transports.DailyRotateFile({
+    filename: 'logs/error-%DATE%.log',
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '30d',
+    level: 'error',
+    format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+            return `${timestamp} [${level.toUpperCase()}]: ${message} ${metaStr}`;
+        })
+    )
+});
+
 const logger = winston.createLogger({
     level: config.server.env === 'production' ? 'info' : 'debug',
     format: winston.format.combine(
@@ -28,13 +58,8 @@ const logger = winston.createLogger({
     ),
     transports: [
         consoleTransport,
-        new winston.transports.File({
-            filename: 'logs/error.log',
-            level: 'error'
-        }),
-        new winston.transports.File({
-            filename: 'logs/combined.log'
-        })
+        fileRotateTransport,
+        errorRotateTransport
     ],
     exitOnError: false
 });

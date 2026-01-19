@@ -214,6 +214,14 @@ class CreditService {
 
         if (orderData.payment?.id) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-check', order.site);
+            await feedRepository.saveStatusHistory({
+                applicationId: result.applicationID,
+                statusType: 'crm',
+                oldStatus: orderData.payment?.status || null,
+                newStatus: 'credit-check',
+                source: 'api',
+                details: 'Application submitted'
+            });
         }
 
         try {
@@ -299,6 +307,14 @@ class CreditService {
 
         if (orderData.payment?.id) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-check', order.site);
+            await feedRepository.saveStatusHistory({
+                applicationId: urn,
+                statusType: 'crm',
+                oldStatus: orderData.payment?.status || null,
+                newStatus: 'credit-check',
+                source: 'api',
+                details: 'Application submitted'
+            });
         }
 
         try {
@@ -433,6 +449,23 @@ class CreditService {
         if (orderData.payment && orderData.payment.status !== crmStatus) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
 
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'bank',
+                oldStatus: null,
+                newStatus: bankStatus.status,
+                source: 'cron'
+            });
+
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'crm',
+                oldStatus: orderData.payment.status,
+                newStatus: crmStatus,
+                source: 'cron',
+                details: crmStatus === 'conditions-changed' ? 'Bank changed conditions' : null
+            });
+
             logger.info('Order status updated', {
                 orderId,
                 applicationId: orderData.loanApplicationId,
@@ -489,6 +522,23 @@ class CreditService {
 
         if (orderData.payment && orderData.payment.status !== crmStatus) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
+
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'bank',
+                oldStatus: null,
+                newStatus: requestStatus,
+                source: 'cron'
+            });
+
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'crm',
+                oldStatus: orderData.payment.status,
+                newStatus: crmStatus,
+                source: 'cron',
+                details: crmStatus === 'conditions-changed' ? 'Bank changed conditions' : null
+            });
 
             logger.info('Order status updated (Easy Credit)', {
                 orderId,
@@ -1037,6 +1087,14 @@ class CreditService {
 
         if (orderData.payment) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, 'credit-declined', order.site);
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'crm',
+                oldStatus: orderData.payment.status,
+                newStatus: 'credit-declined',
+                source: 'api',
+                details: reason ? `Refused: ${reason}` : 'Application cancelled'
+            });
         }
 
         logger.info('Application refused successfully', {
@@ -1307,6 +1365,24 @@ class CreditService {
             approved,
             comparison,
             customerName,
+            success: true
+        };
+    }
+
+    async getStatusHistory(applicationId) {
+        const history = await feedRepository.getStatusHistory(applicationId);
+
+        return {
+            applicationId,
+            history: history.map(item => ({
+                id: item.id,
+                statusType: item.statusType,
+                oldStatus: item.oldStatus,
+                newStatus: item.newStatus,
+                source: item.source,
+                details: item.details,
+                createdAt: item.createdAt
+            })),
             success: true
         };
     }

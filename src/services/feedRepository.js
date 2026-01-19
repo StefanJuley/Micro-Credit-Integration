@@ -205,6 +205,33 @@ class FeedRepository {
         });
     }
 
+    async saveStatusHistory(data) {
+        try {
+            return await prisma.statusHistory.create({
+                data: {
+                    applicationId: data.applicationId,
+                    statusType: data.statusType,
+                    oldStatus: data.oldStatus || null,
+                    newStatus: data.newStatus,
+                    source: data.source,
+                    details: data.details || null
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to save status history', {
+                applicationId: data.applicationId,
+                error: error.message
+            });
+        }
+    }
+
+    async getStatusHistory(applicationId) {
+        return await prisma.statusHistory.findMany({
+            where: { applicationId },
+            orderBy: { createdAt: 'asc' }
+        });
+    }
+
     async disconnect() {
         await prisma.$disconnect();
     }

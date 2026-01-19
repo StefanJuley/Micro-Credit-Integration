@@ -260,6 +260,46 @@
           </div>
         </div>
 
+        <div v-if="applicationId" class="mi-history-section">
+          <button
+            class="mi-history-toggle"
+            @click="toggleHistory"
+          >
+            <span class="mi-history-toggle-icon" :class="{ 'is-open': historyExpanded }"></span>
+            <span>История статусов</span>
+            <span v-if="historyLoading" class="mi-history-loading">...</span>
+          </button>
+          <div v-if="historyExpanded" class="mi-history-content">
+            <div v-if="historyLoading" class="mi-history-loading-text">
+              Загрузка...
+            </div>
+            <div v-else-if="statusHistory.length === 0" class="mi-history-empty">
+              История пока пуста
+            </div>
+            <div v-else class="mi-history-list">
+              <div
+                v-for="item in statusHistory"
+                :key="item.id"
+                class="mi-history-item"
+              >
+                <div class="mi-history-time">{{ formatHistoryDate(item.createdAt) }}</div>
+                <div class="mi-history-info">
+                  <span :class="['mi-history-type', item.statusType]">
+                    {{ item.statusType === 'bank' ? 'Банк' : 'CRM' }}
+                  </span>
+                  <span class="mi-history-change">
+                    <span v-if="item.oldStatus" class="mi-history-old">{{ getHistoryStatusText(item.oldStatus, item.statusType) }}</span>
+                    <span v-if="item.oldStatus" class="mi-history-arrow">-></span>
+                    <span class="mi-history-new">{{ getHistoryStatusText(item.newStatus, item.statusType) }}</span>
+                  </span>
+                </div>
+                <div class="mi-history-source">{{ getSourceText(item.source) }}</div>
+                <div v-if="item.details" class="mi-history-details">{{ item.details }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="message" :class="['mi-message', messageType]">
           {{ message }}
         </div>
@@ -587,6 +627,9 @@ const messageType = ref<'success' | 'error' | ''>('');
 const applicationId = ref<string | null>(null);
 const comparisonData = ref<any>(null);
 const contractLinks = ref<Array<{ name: string; url: string }>>([]);
+const historyExpanded = ref(false);
+const historyLoading = ref(false);
+const statusHistory = ref<any[]>([]);
 const messages = ref<any[]>([]);
 const newMessage = ref('');
 const showCancelDialog = ref(false);
@@ -792,6 +835,8 @@ async function handleSubmit() {
 
 async function handleDetails() {
   modalOpened.value = true;
+  historyExpanded.value = false;
+  statusHistory.value = [];
   await loadComparisonData();
   await loadMessages();
 }
@@ -799,6 +844,8 @@ async function handleDetails() {
 function closeModal() {
   modalOpened.value = false;
   message.value = '';
+  historyExpanded.value = false;
+  statusHistory.value = [];
 }
 
 async function loadComparisonData() {
@@ -988,6 +1035,91 @@ function formatRequestDate(dateStr: string | null): string {
     hour: '2-digit',
     minute: '2-digit'
   });
+}
+
+async function toggleHistory() {
+  historyExpanded.value = !historyExpanded.value;
+  if (historyExpanded.value && statusHistory.value.length === 0) {
+    await loadStatusHistory();
+  }
+}
+
+async function loadStatusHistory() {
+  if (!applicationId.value) return;
+
+  historyLoading.value = true;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/status-history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: applicationId.value }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      statusHistory.value = data.history || [];
+    }
+  } catch (err: any) {
+    console.error('Failed to load status history:', err);
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+function formatHistoryDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getHistoryStatusText(status: string, type: string): string {
+  if (type === 'bank') {
+    const bankMap: Record<string, string> = {
+      'Placed': 'Размещена',
+      'Processing': 'В обработке',
+      'Approved': 'Одобрена',
+      'Refused': 'Отклонена',
+      'Rejected': 'Отклонена',
+      'SignedOnline': 'Подписана онлайн',
+      'SignedPhysically': 'Подписана',
+      'Issued': 'Выдано',
+      'PendingIssue': 'Ожидает выдачи',
+      'IssueRejected': 'Выдача отклонена',
+      'New': 'Новая',
+      'Disbursed': 'Выдан',
+      'Settled': 'Погашен',
+      'Canceled': 'Отменена',
+      'More Data': 'Требуются данные',
+    };
+    return bankMap[status] || status;
+  } else {
+    const crmMap: Record<string, string> = {
+      'not-paid': 'Не оплачен',
+      'credit-check': 'На проверке',
+      'credit-approved': 'Одобрен',
+      'credit-declined': 'Отклонен',
+      'signed-online': 'Подписан онлайн',
+      'paid': 'Выдан',
+      'conditions-changed': 'Условия изменены',
+    };
+    return crmMap[status] || status;
+  }
+}
+
+function getSourceText(source: string): string {
+  const sourceMap: Record<string, string> = {
+    'api': 'API',
+    'cron': 'Автоматически',
+    'webhook': 'Webhook',
+    'manual': 'Вручную',
+  };
+  return sourceMap[source] || source;
 }
 
 async function cancelApplication() {
@@ -1770,6 +1902,144 @@ async function moveToDelivering(item: any) {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+}
+
+.mi-history-section {
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mi-history-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.mi-history-toggle-icon {
+  width: 0;
+  height: 0;
+  border-left: 5px solid #6b7280;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.2s;
+
+  &.is-open {
+    transform: rotate(90deg);
+  }
+}
+
+.mi-history-loading {
+  color: #6b7280;
+  margin-left: auto;
+}
+
+.mi-history-content {
+  border-top: 1px solid #e5e7eb;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.mi-history-loading-text,
+.mi-history-empty {
+  padding: 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.mi-history-list {
+  padding: 8px;
+}
+
+.mi-history-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.mi-history-time {
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.mi-history-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mi-history-type {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+
+  &.bank {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  &.crm {
+    background: #fef3c7;
+    color: #92400e;
+  }
+}
+
+.mi-history-change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mi-history-old {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.mi-history-arrow {
+  color: #9ca3af;
+}
+
+.mi-history-new {
+  color: #111827;
+  font-weight: 500;
+}
+
+.mi-history-source {
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.mi-history-details {
+  grid-column: 1 / -1;
+  color: #6b7280;
+  font-style: italic;
+  padding-left: 8px;
+  border-left: 2px solid #e5e7eb;
+  margin-top: 4px;
 }
 
 .mi-feed-header {

@@ -73,3 +73,18 @@ model ApplicationRequest {
   @@index([creditCompany])
   @@map("application_requests")
 }
+
+model StatusHistory {
+  id            Int      @id @default(autoincrement())
+  applicationId String
+  statusType    String   // 'bank' | 'crm'
+  oldStatus     String?
+  newStatus     String
+  source        String   // 'api' | 'cron' | 'webhook' | 'manual'
+  details       String?  // additional info like "conditions changed"
+  createdAt     DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([applicationId, createdAt])
+  @@map("status_history")
+}

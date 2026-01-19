@@ -332,6 +332,25 @@ app.post('/api/application-request', async (req, res) => {
     }
 });
 
+app.post('/api/status-history', async (req, res) => {
+    const { applicationId } = req.body;
+
+    if (!applicationId) {
+        return res.status(400).json({ success: false, error: 'applicationId is required' });
+    }
+
+    try {
+        const result = await creditService.getStatusHistory(applicationId);
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to get status history', { applicationId, error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 app.get('/api/feed', async (req, res) => {
     try {
         const filters = {};

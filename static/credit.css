@@ -346,6 +346,122 @@
   align-items: center;
   width: 100%;
 }
+.mi-history-section {
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mi-history-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  transition: background 0.2s;
+}
+.mi-history-toggle:hover {
+  background: #f3f4f6;
+}
+.mi-history-toggle-icon {
+  width: 0;
+  height: 0;
+  border-left: 5px solid #6b7280;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.2s;
+}
+.mi-history-toggle-icon.is-open {
+  transform: rotate(90deg);
+}
+.mi-history-loading {
+  color: #6b7280;
+  margin-left: auto;
+}
+.mi-history-content {
+  border-top: 1px solid #e5e7eb;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.mi-history-loading-text,
+.mi-history-empty {
+  padding: 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+.mi-history-list {
+  padding: 8px;
+}
+.mi-history-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+}
+.mi-history-item:last-child {
+  border-bottom: none;
+}
+.mi-history-time {
+  color: #6b7280;
+  white-space: nowrap;
+}
+.mi-history-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mi-history-type {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.mi-history-type.bank {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.mi-history-type.crm {
+  background: #fef3c7;
+  color: #92400e;
+}
+.mi-history-change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mi-history-old {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+.mi-history-arrow {
+  color: #9ca3af;
+}
+.mi-history-new {
+  color: #111827;
+  font-weight: 500;
+}
+.mi-history-source {
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.mi-history-details {
+  grid-column: 1 / -1;
+  color: #6b7280;
+  font-style: italic;
+  padding-left: 8px;
+  border-left: 2px solid #e5e7eb;
+  margin-top: 4px;
+}
 .mi-feed-header {
   display: flex;
   align-items: center;
