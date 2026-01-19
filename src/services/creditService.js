@@ -638,44 +638,68 @@ class CreditService {
                 const orderData = simla.extractOrderData(order);
                 if (!orderData.loanApplicationId) continue;
 
-                const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
-
+                const creditCompany = this.getCreditCompany(orderData);
+                let bankStatusValue = 'Unknown';
+                let documentStatus = null;
                 let conditionsChanged = false;
-                const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
-                const requestedProductName = this.getProductName(requestedProductId);
-
                 let comparison = {
                     requested: {
                         amount: parseFloat(orderData.payment?.amount) || 0,
                         term: parseInt(orderData.creditTerm) || 0,
-                        productType: requestedProductName.startsWith('0%') ? '0%' : 'retail'
+                        productType: 'retail'
                     },
                     approved: null
                 };
 
-                if (bankStatus && bankStatus.status === 'Approved') {
-                    conditionsChanged = this.checkConditionsChanged(orderData, bankStatus);
-                    const approvedProductName = this.getProductName(bankStatus.loanProductID);
+                if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+                    const statusResponse = await easycredit.checkStatus(orderData.loanApplicationId);
+                    if (statusResponse && statusResponse.Status === 'OK') {
+                        bankStatusValue = statusResponse.RequestStatus || 'Unknown';
+                        documentStatus = statusResponse.DocumentStatus || null;
 
-                    comparison.approved = {
-                        amount: bankStatus.amount || 0,
-                        term: bankStatus.loanTerm || 0,
-                        productType: approvedProductName.startsWith('0%') ? '0%' : 'retail'
-                    };
+                        if (statusResponse.RequestStatus === 'Approved') {
+                            conditionsChanged = this.checkEasyCreditConditionsChanged(orderData, statusResponse);
+                            comparison.approved = {
+                                amount: statusResponse.LoanAmount || 0,
+                                term: statusResponse.Installments || 0,
+                                productType: 'retail'
+                            };
+                        }
+                    }
+                } else {
+                    const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
+                    if (bankStatus) {
+                        bankStatusValue = bankStatus.status || 'Unknown';
+
+                        const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
+                        const requestedProductName = this.getProductName(requestedProductId);
+                        comparison.requested.productType = requestedProductName.startsWith('0%') ? '0%' : 'retail';
+
+                        if (bankStatus.status === 'Approved') {
+                            conditionsChanged = this.checkConditionsChanged(orderData, bankStatus);
+                            const approvedProductName = this.getProductName(bankStatus.loanProductID);
+                            comparison.approved = {
+                                amount: bankStatus.amount || 0,
+                                term: bankStatus.loanTerm || 0,
+                                productType: approvedProductName.startsWith('0%') ? '0%' : 'retail'
+                            };
+                        }
+                    }
                 }
 
                 const fullOrder = await simla.getOrder(order.id);
                 const managerId = fullOrder?.managerId || order.managerId || null;
                 const managerName = await simla.getManagerName(managerId);
-                logger.info('Manager info', { orderId: order.id, managerId, managerName });
+                logger.debug('Manager info', { orderId: order.id, managerId, managerName });
 
                 feedItems.push({
                     orderId: order.id,
                     orderNumber: order.number,
                     applicationId: orderData.loanApplicationId,
-                    creditCompany: orderData.creditCompany,
+                    creditCompany: creditCompany,
                     customerName: `${orderData.name || ''} ${orderData.surname || ''}`.trim() || '-',
-                    bankStatus: bankStatus?.status || 'Unknown',
+                    bankStatus: bankStatusValue,
+                    documentStatus: documentStatus,
                     crmStatus: orderData.payment?.status || null,
                     paymentType: orderData.payment?.type || null,
                     orderStatus: fullOrder?.status || order.status || null,
@@ -713,6 +737,7 @@ class CreditService {
                 creditCompany: item.creditCompany,
                 customerName: item.customerName,
                 bankStatus: item.bankStatus,
+                documentStatus: item.documentStatus,
                 crmStatus: item.crmStatus,
                 paymentType: item.paymentType,
                 orderStatus: item.orderStatus,
@@ -777,6 +802,7 @@ class CreditService {
                 creditCompany: item.creditCompany,
                 customerName: item.customerName,
                 bankStatus: item.bankStatus,
+                documentStatus: item.documentStatus,
                 crmStatus: item.crmStatus,
                 paymentType: item.paymentType,
                 orderStatus: item.orderStatus,
@@ -1113,61 +1139,97 @@ class CreditService {
         }
 
         const orderData = simla.extractOrderData(order);
+        const creditCompany = this.getCreditCompany(orderData);
 
         if (!orderData.loanApplicationId) {
             return {
                 orderId,
                 hasApplication: false,
+                creditCompany,
                 success: true
             };
         }
 
-        const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
-
-        const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
-        const requestedProductName = this.getProductName(requestedProductId);
+        let bankStatusValue = null;
+        let documentStatus = null;
+        let customerName = null;
+        let approved = null;
+        let comparison = null;
 
         const requested = {
             amount: parseFloat(orderData.payment?.amount) || 0,
             term: parseInt(orderData.creditTerm) || 0,
-            productType: requestedProductName.startsWith('0%') ? '0%' : 'retail'
+            productType: 'retail'
         };
 
-        let approved = null;
-        let comparison = null;
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            const statusResponse = await easycredit.checkStatus(orderData.loanApplicationId);
+            if (statusResponse && statusResponse.Status === 'OK') {
+                bankStatusValue = statusResponse.RequestStatus || null;
+                documentStatus = statusResponse.DocumentStatus || null;
 
-        const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Issued', 'PendingIssue'];
-        const isApproved = bankStatus && approvedStatuses.includes(bankStatus.status);
+                const approvedStatuses = ['Approved', 'Disbursed', 'Settled'];
+                if (approvedStatuses.includes(statusResponse.RequestStatus)) {
+                    approved = {
+                        amount: statusResponse.LoanAmount || 0,
+                        term: statusResponse.Installments || 0,
+                        productType: 'retail'
+                    };
 
-        if (isApproved) {
-            const approvedProductName = this.getProductName(bankStatus.loanProductID);
+                    comparison = {
+                        amountMatch: Math.abs(requested.amount - approved.amount) <= 1,
+                        termMatch: requested.term === approved.term,
+                        productMatch: true,
+                        hasChanges: Math.abs(requested.amount - approved.amount) > 1 ||
+                            requested.term !== approved.term
+                    };
+                }
+            }
+        } else {
+            const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
+            if (bankStatus) {
+                bankStatusValue = bankStatus.status;
 
-            approved = {
-                amount: bankStatus.amount || 0,
-                term: bankStatus.loanTerm || 0,
-                productType: approvedProductName.startsWith('0%') ? '0%' : 'retail'
-            };
+                const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
+                const requestedProductName = this.getProductName(requestedProductId);
+                requested.productType = requestedProductName.startsWith('0%') ? '0%' : 'retail';
 
-            comparison = {
-                amountMatch: requested.amount === approved.amount,
-                termMatch: requested.term === approved.term,
-                productMatch: requested.productType === approved.productType,
-                hasChanges: requested.amount !== approved.amount ||
-                    requested.term !== approved.term ||
-                    requested.productType !== approved.productType
-            };
+                const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Issued', 'PendingIssue'];
+                if (approvedStatuses.includes(bankStatus.status)) {
+                    const approvedProductName = this.getProductName(bankStatus.loanProductID);
+
+                    approved = {
+                        amount: bankStatus.amount || 0,
+                        term: bankStatus.loanTerm || 0,
+                        productType: approvedProductName.startsWith('0%') ? '0%' : 'retail'
+                    };
+
+                    comparison = {
+                        amountMatch: requested.amount === approved.amount,
+                        termMatch: requested.term === approved.term,
+                        productMatch: requested.productType === approved.productType,
+                        hasChanges: requested.amount !== approved.amount ||
+                            requested.term !== approved.term ||
+                            requested.productType !== approved.productType
+                    };
+                }
+
+                customerName = `${bankStatus.name || ''} ${bankStatus.surname || ''}`.trim() || null;
+            }
         }
 
         return {
             orderId,
             applicationId: orderData.loanApplicationId,
             hasApplication: true,
-            bankStatus: bankStatus?.status || null,
+            creditCompany,
+            bankStatus: bankStatusValue,
+            documentStatus,
             crmStatus: orderData.payment?.status || null,
             requested,
             approved,
             comparison,
-            customerName: bankStatus ? `${bankStatus.name || ''} ${bankStatus.surname || ''}`.trim() : null,
+            customerName,
             success: true
         };
     }
