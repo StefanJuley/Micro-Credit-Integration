@@ -22,11 +22,7 @@ class EasyCreditClient {
 
         this.filesClient = axios.create({
             baseURL: `${config.easycredit.filesUrl}/${config.easycredit.environment}`,
-            timeout: 120000,
-            auth: {
-                username: config.easycredit.login,
-                password: config.easycredit.password
-            }
+            timeout: 120000
         });
 
         this.credentials = {
@@ -148,7 +144,10 @@ class EasyCreditClient {
         }
     }
 
-    async uploadFiles(urn, files) {
+    async uploadFiles(urn, files, retryCount = 0) {
+        const maxRetries = 2;
+        const retryDelay = 2000;
+
         try {
             const formData = new FormData();
             formData.append('Login', this.credentials.Login);
@@ -171,16 +170,30 @@ class EasyCreditClient {
 
             logger.info('Files uploaded to Easy Credit', {
                 urn,
-                filesCount: files.length
+                filesCount: files.length,
+                response: response.data?.detail?.status || 'OK'
             });
 
             return response.data;
         } catch (error) {
+            const status = error.response?.status;
+            const shouldRetry = (status === 401 || status === 503) && retryCount < maxRetries;
+
             logger.error('Files upload failed', {
                 urn,
                 error: error.message,
-                response: error.response?.data
+                status,
+                response: error.response?.data,
+                attempt: retryCount + 1,
+                willRetry: shouldRetry
             });
+
+            if (shouldRetry) {
+                logger.info(`Retrying file upload in ${retryDelay}ms`, { urn, attempt: retryCount + 2 });
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                return this.uploadFiles(urn, files, retryCount + 1);
+            }
+
             throw error;
         }
     }

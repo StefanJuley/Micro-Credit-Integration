@@ -276,6 +276,9 @@ class CreditService {
 
         if (files.length > 0) {
             try {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                logger.debug('Starting file upload to Easy Credit after delay', { urn, filesCount: files.length });
+
                 await easycredit.uploadFiles(urn, files);
                 logger.info('Files uploaded to Easy Credit', {
                     orderId,
@@ -286,7 +289,8 @@ class CreditService {
                 logger.error('Failed to upload files to Easy Credit', {
                     orderId,
                     urn,
-                    error: uploadError.message
+                    error: uploadError.message,
+                    response: uploadError.response?.data
                 });
             }
         }
@@ -348,18 +352,29 @@ class CreditService {
             throw new Error(`Order ${orderId} has no files attached`);
         }
 
-        await microinvest.sendContracts(orderData.loanApplicationId, files);
+        const creditCompany = this.getCreditCompany(orderData);
 
-        logger.info('Files sent successfully', {
-            orderId,
-            applicationId: orderData.loanApplicationId,
-            filesCount: files.length
-        });
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            await easycredit.uploadFiles(orderData.loanApplicationId, files);
+            logger.info('Files sent to Easy Credit', {
+                orderId,
+                urn: orderData.loanApplicationId,
+                filesCount: files.length
+            });
+        } else {
+            await microinvest.sendContracts(orderData.loanApplicationId, files);
+            logger.info('Files sent to Microinvest', {
+                orderId,
+                applicationId: orderData.loanApplicationId,
+                filesCount: files.length
+            });
+        }
 
         return {
             orderId,
             applicationId: orderData.loanApplicationId,
             filesCount: files.length,
+            creditCompany,
             success: true
         };
     }

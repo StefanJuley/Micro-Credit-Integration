@@ -248,7 +248,7 @@
               Отправить
             </UiButton>
           </div>
-          <div v-if="!isEasyCredit" class="mi-send-files">
+          <div v-if="applicationId" class="mi-send-files">
             <UiButton
               :loading="sendingFiles"
               appearance="secondary"
