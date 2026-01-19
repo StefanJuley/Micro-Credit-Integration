@@ -22,7 +22,11 @@ class EasyCreditClient {
 
         this.filesClient = axios.create({
             baseURL: `${config.easycredit.filesUrl}/${config.easycredit.environment}`,
-            timeout: 120000
+            timeout: 120000,
+            auth: {
+                username: config.easycredit.login,
+                password: config.easycredit.password
+            }
         });
 
         this.credentials = {
