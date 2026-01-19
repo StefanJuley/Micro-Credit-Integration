@@ -138,10 +138,11 @@ class EasyCreditClient {
             });
 
             if (apiMessage) {
-                throw new Error(apiMessage);
+                const msg = typeof apiMessage === 'string' ? apiMessage : JSON.stringify(apiMessage);
+                throw new Error(msg);
             }
             if (error.response?.status === 422) {
-                throw new Error(`Validation error: ${JSON.stringify(responseData)}`);
+                throw new Error(`Ошибка валидации: ${JSON.stringify(responseData?.detail || responseData)}`);
             }
             throw error;
         }
