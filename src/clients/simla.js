@@ -49,40 +49,23 @@ class SimlaClient {
 
     async getOrdersWithActiveApplications() {
         try {
-            const params = this.buildParams({
-                'filter[customFields][credit_company][]': 'microinvest',
-                'filter[paymentStatuses][]': 'credit-check',
-                limit: 100
-            });
+            const companies = ['microinvest', 'easycredit'];
+            const statuses = ['credit-check', 'credit-approved', 'conditions-changed', 'credit-declined'];
 
             let orders = [];
 
-            const response1 = await this.client.get(`/orders?${params}`);
-            orders = orders.concat(response1.data?.orders || []);
+            for (const company of companies) {
+                for (const status of statuses) {
+                    const params = this.buildParams({
+                        'filter[customFields][credit_company][]': company,
+                        'filter[paymentStatuses][]': status,
+                        limit: 100
+                    });
 
-            const params2 = this.buildParams({
-                'filter[customFields][credit_company][]': 'microinvest',
-                'filter[paymentStatuses][]': 'credit-approved',
-                limit: 100
-            });
-            const response2 = await this.client.get(`/orders?${params2}`);
-            orders = orders.concat(response2.data?.orders || []);
-
-            const params3 = this.buildParams({
-                'filter[customFields][credit_company][]': 'microinvest',
-                'filter[paymentStatuses][]': 'conditions-changed',
-                limit: 100
-            });
-            const response3 = await this.client.get(`/orders?${params3}`);
-            orders = orders.concat(response3.data?.orders || []);
-
-            const params4 = this.buildParams({
-                'filter[customFields][credit_company][]': 'microinvest',
-                'filter[paymentStatuses][]': 'credit-declined',
-                limit: 100
-            });
-            const response4 = await this.client.get(`/orders?${params4}`);
-            orders = orders.concat(response4.data?.orders || []);
+                    const response = await this.client.get(`/orders?${params}`);
+                    orders = orders.concat(response.data?.orders || []);
+                }
+            }
 
             const filtered = orders.filter(order => {
                 const appId = order.customFields?.[config.crmFields.loanApplicationId];
