@@ -1386,6 +1386,78 @@ class CreditService {
             success: true
         };
     }
+
+    getFileCleanupStatuses() {
+        return [
+            'complete',
+            'delivered',
+            'no-call',
+            'no-product',
+            'already-buyed',
+            'delyv-did-not-suit',
+            'prices-did-not-suit',
+            'cancel-other',
+            'purchase-return',
+            'ne-zabral-zakaz'
+        ];
+    }
+
+    async getFileCleanupStats() {
+        const stats = await simla.getFileCleanupStats({
+            creditStatuses: this.getFileCleanupStatuses(),
+            olderThanMonths: 2
+        });
+
+        return {
+            success: true,
+            ...stats
+        };
+    }
+
+    async cleanupFilesForArchivedOrders() {
+        logger.info('Starting file cleanup for archived orders');
+
+        const orders = await simla.getOrdersForFileCleanup({
+            creditStatuses: this.getFileCleanupStatuses(),
+            olderThanMonths: 2
+        });
+
+        logger.info('Found orders for file cleanup', { count: orders.length });
+
+        let totalDeleted = 0;
+        let ordersProcessed = 0;
+        let ordersCleaned = 0;
+
+        for (const order of orders) {
+            try {
+                const result = await simla.deleteOrderFiles(order.id, order.site);
+                ordersProcessed++;
+
+                if (result.deletedCount > 0) {
+                    totalDeleted += result.deletedCount;
+                    ordersCleaned++;
+                }
+            } catch (error) {
+                logger.error('Failed to cleanup files for order', {
+                    orderId: order.id,
+                    error: error.message
+                });
+            }
+        }
+
+        logger.info('File cleanup completed', {
+            ordersProcessed,
+            ordersCleaned,
+            totalDeleted
+        });
+
+        return {
+            success: true,
+            ordersProcessed,
+            ordersCleaned,
+            totalDeleted
+        };
+    }
 }
 
 module.exports = new CreditService();

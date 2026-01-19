@@ -419,6 +419,150 @@ class SimlaClient {
         const lastName = user.lastName || '';
         return `${firstName} ${lastName}`.trim() || null;
     }
+
+    async deleteFile(fileId) {
+        try {
+            const response = await this.client.post(
+                `/files/${fileId}/delete?apiKey=${config.simla.apiKey}`
+            );
+            logger.debug('File deleted', { fileId });
+            return { success: true, fileId };
+        } catch (error) {
+            logger.error('deleteFile failed', { fileId, error: error.message });
+            return { success: false, fileId, error: error.message };
+        }
+    }
+
+    async deleteOrderFiles(orderId, site) {
+        const files = await this.getOrderFiles(orderId, site);
+        if (files.length === 0) {
+            return { orderId, deletedCount: 0, files: [] };
+        }
+
+        const results = [];
+        for (const file of files) {
+            await this.delay(120);
+            const result = await this.deleteFile(file.id);
+            results.push({ ...result, filename: file.filename });
+        }
+
+        const deletedCount = results.filter(r => r.success).length;
+        logger.info('Order files deleted', { orderId, deletedCount, totalFiles: files.length });
+
+        return { orderId, deletedCount, totalFiles: files.length, files: results };
+    }
+
+    async getOrdersForFileCleanup(options = {}) {
+        const { creditStatuses = [], olderThanMonths = null } = options;
+        let allOrders = [];
+
+        if (creditStatuses.length > 0) {
+            const companies = ['microinvest', 'easycredit'];
+            for (const company of companies) {
+                for (const status of creditStatuses) {
+                    await this.delay(120);
+                    const params = this.buildParams({
+                        'filter[customFields][credit_company][]': company,
+                        'filter[statuses][]': status,
+                        limit: 100
+                    });
+
+                    try {
+                        const response = await this.client.get(`/orders?${params}`);
+                        const orders = response.data?.orders || [];
+                        allOrders = allOrders.concat(orders.map(o => ({
+                            id: o.id,
+                            number: o.number,
+                            site: o.site,
+                            status: o.status,
+                            createdAt: o.createdAt,
+                            creditCompany: company,
+                            reason: 'credit_archived'
+                        })));
+                    } catch (error) {
+                        logger.error('Failed to get orders for cleanup', { company, status, error: error.message });
+                    }
+                }
+            }
+        }
+
+        if (olderThanMonths) {
+            const cutoffDate = new Date();
+            cutoffDate.setMonth(cutoffDate.getMonth() - olderThanMonths);
+            const dateStr = cutoffDate.toISOString().split('T')[0];
+
+            await this.delay(120);
+            const params = this.buildParams({
+                'filter[createdAtTo]': dateStr,
+                limit: 100
+            });
+
+            try {
+                const response = await this.client.get(`/orders?${params}`);
+                const orders = response.data?.orders || [];
+                const oldOrders = orders.map(o => ({
+                    id: o.id,
+                    number: o.number,
+                    site: o.site,
+                    status: o.status,
+                    createdAt: o.createdAt,
+                    reason: 'older_than_2_months'
+                }));
+
+                for (const oldOrder of oldOrders) {
+                    if (!allOrders.some(o => o.id === oldOrder.id)) {
+                        allOrders.push(oldOrder);
+                    }
+                }
+            } catch (error) {
+                logger.error('Failed to get old orders for cleanup', { error: error.message });
+            }
+        }
+
+        const uniqueOrders = [];
+        const seenIds = new Set();
+        for (const order of allOrders) {
+            if (!seenIds.has(order.id)) {
+                seenIds.add(order.id);
+                uniqueOrders.push(order);
+            }
+        }
+
+        return uniqueOrders;
+    }
+
+    async getFileCleanupStats(options = {}) {
+        const orders = await this.getOrdersForFileCleanup(options);
+        let totalFiles = 0;
+        const orderStats = [];
+
+        for (const order of orders) {
+            await this.delay(120);
+            const files = await this.getOrderFiles(order.id, order.site);
+            if (files.length > 0) {
+                totalFiles += files.length;
+                orderStats.push({
+                    orderId: order.id,
+                    orderNumber: order.number,
+                    status: order.status,
+                    reason: order.reason,
+                    filesCount: files.length,
+                    createdAt: order.createdAt
+                });
+            }
+        }
+
+        return {
+            totalOrders: orders.length,
+            ordersWithFiles: orderStats.length,
+            totalFiles,
+            orders: orderStats
+        };
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 }
 
 module.exports = new SimlaClient();

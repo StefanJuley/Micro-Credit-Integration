@@ -417,6 +417,32 @@ app.post('/api/update-order-status', async (req, res) => {
     }
 });
 
+app.get('/api/file-cleanup-stats', async (req, res) => {
+    try {
+        const stats = await creditService.getFileCleanupStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Failed to get file cleanup stats', { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/file-cleanup', async (req, res) => {
+    try {
+        const result = await creditService.cleanupFilesForArchivedOrders();
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to run file cleanup', { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 const cronExpression = `*/${config.cron.statusCheckInterval} * * * *`;
 logger.info(`Setting up cron job with interval: every ${config.cron.statusCheckInterval} minutes`);
 
@@ -427,6 +453,15 @@ cron.schedule(cronExpression, async () => {
         await creditService.syncFeedToDatabase();
     } catch (error) {
         logger.error('Cron job failed', { error: error.message });
+    }
+});
+
+cron.schedule('0 3 * * *', async () => {
+    logger.info('Daily file cleanup cron started');
+    try {
+        await creditService.cleanupFilesForArchivedOrders();
+    } catch (error) {
+        logger.error('File cleanup cron failed', { error: error.message });
     }
 });
 
