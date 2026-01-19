@@ -157,7 +157,7 @@ class CreditService {
         }
 
         if (!orderData.payment) {
-            throw new Error(`Order ${orderId} has no credit payment`);
+            throw new Error(`Заказ ${orderId} не имеет кредитного типа оплаты`);
         }
 
         const files = await simla.getOrderFilesAsBase64(orderId, order.site);
