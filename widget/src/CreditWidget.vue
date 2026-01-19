@@ -716,12 +716,13 @@ async function handleSubmit() {
       modalOpened.value = true;
       await loadComparisonData();
     } else {
-      message.value = `Ошибка: ${data.error || 'Не удалось отправить'}`;
+      const errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+      message.value = `Ошибка: ${errorMsg || 'Не удалось отправить'}`;
       messageType.value = 'error';
       modalOpened.value = true;
     }
   } catch (err: any) {
-    message.value = `Ошибка: ${err.message}`;
+    message.value = `Ошибка: ${err.message || String(err)}`;
     messageType.value = 'error';
     modalOpened.value = true;
   } finally {
