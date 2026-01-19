@@ -124,11 +124,25 @@ class EasyCreditClient {
 
             return response.data?.response;
         } catch (error) {
+            const responseData = error.response?.data;
+            const apiMessage = responseData?.response?.Message ||
+                               responseData?.message ||
+                               responseData?.detail ||
+                               (typeof responseData === 'string' ? responseData : null);
+
             logger.error('Request_v3 failed', {
                 idnp: applicationData.idnp,
+                status: error.response?.status,
                 error: error.message,
-                response: error.response?.data
+                response: responseData
             });
+
+            if (apiMessage) {
+                throw new Error(apiMessage);
+            }
+            if (error.response?.status === 422) {
+                throw new Error(`Validation error: ${JSON.stringify(responseData)}`);
+            }
             throw error;
         }
     }
