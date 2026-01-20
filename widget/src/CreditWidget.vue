@@ -538,9 +538,9 @@
           <button
             :disabled="feedLoading"
             class="mi-action-btn mi-action-btn-primary"
-            @click="loadFeed(true)"
+            @click="loadFeed()"
           >
-            {{ feedLoading ? 'Синхронизация...' : 'Обновить' }}
+            {{ feedLoading ? 'Загрузка...' : 'Обновить' }}
           </button>
           <UiButton appearance="secondary" @click="toggleArchiveView">
             {{ isArchiveView ? 'Активные' : 'Архив' }}
@@ -1375,14 +1375,10 @@ function getCrmStatusText(status: string): string {
   return statusMap[status] || status || '-';
 }
 
-async function loadFeed(sync = false) {
+async function loadFeed() {
   feedLoading.value = true;
 
   try {
-    if (sync) {
-      await fetch(`${API_BASE}/api/feed/sync`, { method: 'POST' });
-    }
-
     const archiveParam = isArchiveView.value ? 'true' : 'false';
     const response = await fetch(`${API_BASE}/api/feed?archive=${archiveParam}`);
     const data = await response.json();
