@@ -1757,7 +1757,7 @@ class CreditService {
                 await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
             }
 
-            await feedRepository.saveApplication({
+            await feedRepository.saveApplicationRequest({
                 applicationId: iuteOrderId,
                 orderNumber: orderId,
                 creditCompany: CREDIT_COMPANY_IUTE,
