@@ -1411,7 +1411,7 @@ function toggleArchiveView() {
 
 function getFeedItemClass(item: any): string {
   if (item.conditionsChanged) return 'conditions-changed';
-  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Disbursed', 'Settled'];
+  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Disbursed', 'Settled', 'Issued', 'PendingIssue'];
   const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled'];
   const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
   if (approvedStatuses.includes(item.bankStatus)) return 'approved';
