@@ -49,7 +49,7 @@ class SimlaClient {
 
     async getOrdersWithActiveApplications() {
         try {
-            const companies = ['microinvest', 'easycredit'];
+            const companies = ['microinvest', 'easycredit', 'iutecredit'];
             const statuses = ['not-paid', 'credit-check', 'credit-approved', 'conditions-changed', 'credit-declined'];
 
             let orders = [];
@@ -457,7 +457,7 @@ class SimlaClient {
         let allOrders = [];
 
         if (creditStatuses.length > 0) {
-            const companies = ['microinvest', 'easycredit'];
+            const companies = ['microinvest', 'easycredit', 'iutecredit'];
             for (const company of companies) {
                 for (const status of creditStatuses) {
                     await this.delay(120);

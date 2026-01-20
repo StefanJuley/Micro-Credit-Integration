@@ -73,6 +73,27 @@ class CreditService {
         return company || CREDIT_COMPANY_MICROINVEST;
     }
 
+    async getOrderCreditCompany(orderId) {
+        const order = await simla.getOrder(orderId);
+        if (!order) {
+            throw new Error(`Order ${orderId} not found`);
+        }
+        const orderData = simla.extractOrderData(order);
+        return this.getCreditCompany(orderData);
+    }
+
+    async submitApplicationAuto(orderId, managerData = {}) {
+        const creditCompany = await this.getOrderCreditCompany(orderId);
+
+        logger.info('Auto-detecting credit company for submission', { orderId, creditCompany });
+
+        if (creditCompany === CREDIT_COMPANY_IUTE) {
+            return await this.submitIuteApplication(orderId, null, null, managerData);
+        }
+
+        return await this.submitApplication(orderId, managerData);
+    }
+
     getEasyCreditProductId(term) {
         if (term >= 6 && term <= 11) return 54;
         if (term === 12) return 55;
@@ -376,6 +397,10 @@ class CreditService {
 
         const creditCompany = this.getCreditCompany(orderData);
 
+        if (creditCompany === CREDIT_COMPANY_IUTE) {
+            throw new Error('Iute Credit не требует отправки файлов. Клиент проходит верификацию в приложении MyIute.');
+        }
+
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
             await easycredit.uploadFiles(orderData.loanApplicationId, files);
             logger.info('Files sent to Easy Credit', {
@@ -418,9 +443,63 @@ class CreditService {
 
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
             return await this._checkEasyCreditStatus(orderId, order, orderData);
+        } else if (creditCompany === CREDIT_COMPANY_IUTE) {
+            return await this._checkIuteStatus(orderId, order, orderData);
         } else {
             return await this._checkMicroinvestStatus(orderId, order, orderData);
         }
+    }
+
+    async _checkIuteStatus(orderId, order, orderData) {
+        const statusResponse = await iute.getOrderStatus(orderData.loanApplicationId);
+
+        if (!statusResponse) {
+            logger.debug('Iute order status not available', {
+                orderId,
+                applicationId: orderData.loanApplicationId
+            });
+            return null;
+        }
+
+        const bankStatus = statusResponse.status;
+        const crmStatus = config.iuteStatusMapping[bankStatus];
+
+        if (!crmStatus) {
+            logger.warn('Unknown Iute status', { orderId, bankStatus });
+            return null;
+        }
+
+        const currentPaymentStatus = orderData.payment?.status;
+        const isFinal = config.iuteFinalStatuses.includes(bankStatus);
+
+        if (currentPaymentStatus === crmStatus) {
+            logger.debug('Iute status unchanged', { orderId, status: crmStatus });
+            return { orderId, status: bankStatus, crmStatus, changed: false, isFinal };
+        }
+
+        if (orderData.payment?.id) {
+            await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
+
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'crm',
+                oldStatus: currentPaymentStatus,
+                newStatus: crmStatus,
+                source: 'cron',
+                details: `Iute status: ${bankStatus}`
+            });
+        }
+
+        await feedRepository.updateApplicationStatus(orderData.loanApplicationId, bankStatus, crmStatus);
+
+        logger.info('Iute status updated', {
+            orderId,
+            applicationId: orderData.loanApplicationId,
+            bankStatus,
+            crmStatus
+        });
+
+        return { orderId, status: bankStatus, crmStatus, changed: true, isFinal };
     }
 
     async _checkMicroinvestStatus(orderId, order, orderData) {
@@ -771,6 +850,11 @@ class CreditService {
                             };
                         }
                     }
+                } else if (creditCompany === CREDIT_COMPANY_IUTE) {
+                    const statusResponse = await iute.getOrderStatus(orderData.loanApplicationId);
+                    if (statusResponse) {
+                        bankStatusValue = statusResponse.status || 'Unknown';
+                    }
                 } else {
                     const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);
                     if (bankStatus) {
@@ -1010,6 +1094,10 @@ class CreditService {
             throw new Error(`Order ${orderId} has no application ID`);
         }
 
+        if (creditCompany === CREDIT_COMPANY_IUTE) {
+            throw new Error('Iute Credit не предоставляет контракты через API. Клиент подписывает договор в приложении MyIute.');
+        }
+
         let files = [];
 
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
@@ -1087,6 +1175,8 @@ class CreditService {
 
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
             await easycredit.cancelRequest(orderData.loanApplicationId);
+        } else if (creditCompany === CREDIT_COMPANY_IUTE) {
+            await iute.withdrawOrder(orderData.loanApplicationId);
         } else {
             await microinvest.sendRefuseRequest(orderData.loanApplicationId, reason);
         }
@@ -1154,6 +1244,16 @@ class CreditService {
             };
         }
 
+        if (creditCompany === CREDIT_COMPANY_IUTE) {
+            return {
+                orderId,
+                applicationId: orderData.loanApplicationId,
+                messages: [],
+                isIute: true,
+                success: true
+            };
+        }
+
         const response = await microinvest.getMessages(orderData.loanApplicationId, newOnly);
 
         const messages = response?.messageSet || [];
@@ -1203,6 +1303,10 @@ class CreditService {
 
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
             throw new Error('Easy Credit не поддерживает отправку сообщений. Банк отправляет комментарии в одностороннем порядке.');
+        }
+
+        if (creditCompany === CREDIT_COMPANY_IUTE) {
+            throw new Error('Iute Credit не поддерживает обмен сообщениями через API.');
         }
 
         let files = null;
@@ -1327,6 +1431,22 @@ class CreditService {
                             requested.term !== approved.term
                     };
                 }
+            }
+        } else if (creditCompany === CREDIT_COMPANY_IUTE) {
+            const statusResponse = await iute.getOrderStatus(orderData.loanApplicationId);
+            if (statusResponse) {
+                bankStatusValue = statusResponse.status || null;
+
+                const approvedStatuses = ['IN_PROGRESS', 'PAID'];
+                if (approvedStatuses.includes(statusResponse.status)) {
+                    approved = {
+                        amount: requested.amount,
+                        term: null,
+                        productType: 'retail'
+                    };
+                }
+
+                customerName = orderData.customerFullName || null;
             }
         } else {
             const bankStatus = await microinvest.checkApplicationStatus(orderData.loanApplicationId);

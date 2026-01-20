@@ -106,7 +106,7 @@ app.post('/api/send-application', async (req, res) => {
     }
 
     try {
-        const result = await creditService.submitApplication(orderId, { managerId, managerName });
+        const result = await creditService.submitApplicationAuto(orderId, { managerId, managerName });
         res.json(result);
     } catch (error) {
         logger.error('Failed to submit application', { orderId, error: error.message });
