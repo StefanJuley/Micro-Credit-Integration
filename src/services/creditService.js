@@ -93,8 +93,8 @@ class CreditService {
         return names.join(', ').substring(0, 200);
     }
 
-    async submitApplication(orderId) {
-        logger.info('Submitting application for order', { orderId });
+    async submitApplication(orderId, managerData = {}) {
+        logger.info('Submitting application for order', { orderId, managerData });
 
         if (pendingSubmissions.has(orderId)) {
             throw new Error(`Заявка для заказа ${orderId} уже в процессе отправки`);
@@ -103,13 +103,13 @@ class CreditService {
         pendingSubmissions.add(orderId);
 
         try {
-            return await this._submitApplicationInternal(orderId);
+            return await this._submitApplicationInternal(orderId, managerData);
         } finally {
             pendingSubmissions.delete(orderId);
         }
     }
 
-    async _submitApplicationInternal(orderId) {
+    async _submitApplicationInternal(orderId, managerData = {}) {
         const order = await simla.getOrder(orderId);
         if (!order) {
             throw new Error(`Order ${orderId} not found`);
@@ -163,13 +163,13 @@ class CreditService {
         const files = await simla.getOrderFilesAsBase64(orderId, order.site);
 
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
-            return await this._submitEasyCreditApplication(orderId, order, orderData, files);
+            return await this._submitEasyCreditApplication(orderId, order, orderData, files, managerData);
         } else {
-            return await this._submitMicroinvestApplication(orderId, order, orderData, files);
+            return await this._submitMicroinvestApplication(orderId, order, orderData, files, managerData);
         }
     }
 
-    async _submitMicroinvestApplication(orderId, order, orderData, files) {
+    async _submitMicroinvestApplication(orderId, order, orderData, files, managerData = {}) {
         if (files.length === 0) {
             throw new Error(`Необходимо прикрепить фото паспорта к заказу`);
         }
@@ -220,7 +220,9 @@ class CreditService {
                 oldStatus: orderData.payment?.status || null,
                 newStatus: 'credit-check',
                 source: 'api',
-                details: 'Application submitted'
+                details: 'Application submitted',
+                managerId: managerData.managerId,
+                managerName: managerData.managerName
             });
         }
 
@@ -255,7 +257,7 @@ class CreditService {
         };
     }
 
-    async _submitEasyCreditApplication(orderId, order, orderData, files) {
+    async _submitEasyCreditApplication(orderId, order, orderData, files, managerData = {}) {
         const productId = this.getEasyCreditProductId(parseInt(orderData.creditTerm) || 6);
         const firstInstallmentDate = easycredit.calculateFirstInstallmentDate(20);
 
@@ -313,7 +315,9 @@ class CreditService {
                 oldStatus: orderData.payment?.status || null,
                 newStatus: 'credit-check',
                 source: 'api',
-                details: 'Application submitted'
+                details: 'Application submitted',
+                managerId: managerData.managerId,
+                managerName: managerData.managerName
             });
         }
 
@@ -1064,8 +1068,8 @@ class CreditService {
         };
     }
 
-    async refuseApplication(orderId, reason) {
-        logger.info('Refusing application for order', { orderId, reason });
+    async refuseApplication(orderId, reason, managerData = {}) {
+        logger.info('Refusing application for order', { orderId, reason, managerData });
 
         const order = await simla.getOrder(orderId);
         if (!order) {
@@ -1093,7 +1097,9 @@ class CreditService {
                 oldStatus: orderData.payment.status,
                 newStatus: 'credit-declined',
                 source: 'api',
-                details: reason ? `Refused: ${reason}` : 'Application cancelled'
+                details: reason ? `Refused: ${reason}` : 'Application cancelled',
+                managerId: managerData.managerId,
+                managerName: managerData.managerName
             });
         }
 

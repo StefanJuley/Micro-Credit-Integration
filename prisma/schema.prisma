@@ -82,6 +82,8 @@ model StatusHistory {
   newStatus     String
   source        String   // 'api' | 'cron' | 'webhook' | 'manual'
   details       String?  // additional info like "conditions changed"
+  managerId     Int?
+  managerName   String?
   createdAt     DateTime @default(now())
 
   @@index([applicationId])

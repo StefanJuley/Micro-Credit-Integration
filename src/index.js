@@ -99,14 +99,14 @@ app.post('/api/order-credit-info', async (req, res) => {
 });
 
 app.post('/api/send-application', async (req, res) => {
-    const { orderId } = req.body;
+    const { orderId, managerId, managerName } = req.body;
 
     if (!orderId) {
         return res.status(400).json({ success: false, error: 'orderId is required' });
     }
 
     try {
-        const result = await creditService.submitApplication(orderId);
+        const result = await creditService.submitApplication(orderId, { managerId, managerName });
         res.json(result);
     } catch (error) {
         logger.error('Failed to submit application', { orderId, error: error.message });
@@ -234,14 +234,14 @@ app.get('/api/contract-file/:orderId/:fileIndex', async (req, res) => {
 });
 
 app.post('/api/refuse-application', async (req, res) => {
-    const { orderId, reason } = req.body;
+    const { orderId, reason, managerId, managerName } = req.body;
 
     if (!orderId) {
         return res.status(400).json({ success: false, error: 'orderId is required' });
     }
 
     try {
-        const result = await creditService.refuseApplication(orderId, reason || 'Client refused');
+        const result = await creditService.refuseApplication(orderId, reason || 'Client refused', { managerId, managerName });
         res.json(result);
     } catch (error) {
         logger.error('Failed to refuse application', { orderId, error: error.message });

@@ -297,7 +297,7 @@
                     <span class="mi-history-new">{{ getHistoryStatusText(item.newStatus, item.statusType) }}</span>
                   </span>
                 </div>
-                <div class="mi-history-source">{{ getSourceText(item.source) }}</div>
+                <div class="mi-history-source">{{ getSourceText(item) }}</div>
                 <div v-if="item.details" class="mi-history-details">{{ item.details }}</div>
               </div>
             </div>
@@ -826,7 +826,11 @@ async function handleSubmit() {
     const response = await fetch(`${API_BASE}/api/send-application`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId: orderId.value }),
+      body: JSON.stringify({
+        orderId: orderId.value,
+        managerId: currentUserId.value,
+        managerName: currentUserDisplayName.value
+      }),
     });
 
     const data = await response.json();
@@ -929,7 +933,11 @@ async function submitApplication() {
     const response = await fetch(`${API_BASE}/api/send-application`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId: orderId.value }),
+      body: JSON.stringify({
+        orderId: orderId.value,
+        managerId: currentUserId.value,
+        managerName: currentUserDisplayName.value
+      }),
     });
 
     const data = await response.json();
@@ -1131,14 +1139,17 @@ function getHistoryStatusText(status: string, type: string): string {
   }
 }
 
-function getSourceText(source: string): string {
+function getSourceText(item: any): string {
+  if (item.managerName) {
+    return item.managerName;
+  }
   const sourceMap: Record<string, string> = {
-    'api': 'API',
+    'api': 'Менеджер',
     'cron': 'Автоматически',
     'webhook': 'Webhook',
     'manual': 'Вручную',
   };
-  return sourceMap[source] || source;
+  return sourceMap[item.source || item] || item.source || item;
 }
 
 async function cancelApplication() {
@@ -1152,7 +1163,9 @@ async function cancelApplication() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId: orderId.value,
-        reason: cancelReason.value || 'Client refused'
+        reason: cancelReason.value || 'Client refused',
+        managerId: currentUserId.value,
+        managerName: currentUserDisplayName.value
       }),
     });
 

@@ -214,7 +214,9 @@ class FeedRepository {
                     oldStatus: data.oldStatus || null,
                     newStatus: data.newStatus,
                     source: data.source,
-                    details: data.details || null
+                    details: data.details || null,
+                    managerId: data.managerId || null,
+                    managerName: data.managerName || null
                 }
             });
         } catch (error) {
