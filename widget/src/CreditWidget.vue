@@ -84,39 +84,12 @@
         </div>
 
         <div v-else-if="!applicationId" class="mi-section">
-          <p class="mi-info-text">Заявка еще не создана</p>
-
-          <div class="mi-create-form">
-            <div class="mi-form-row">
-              <label class="mi-form-label">Кредитная компания:</label>
-              <select v-model="selectedCompany" class="mi-form-select">
-                <option value="microinvest">Microinvest</option>
-                <option value="easycredit">Easy Credit</option>
-                <option value="iutecredit">Iute Credit</option>
-              </select>
-            </div>
-
-            <p v-if="selectedCompany === 'iutecredit'" class="mi-form-hint">
-              Клиент должен быть зарегистрирован в MyIute. Телефон берётся из заказа.
-            </p>
-          </div>
+          <p class="mi-info-text">Заявка для этого заказа ещё не создана</p>
         </div>
 
-        <div class="mi-actions">
+        <div v-if="applicationId" class="mi-actions">
           <div class="mi-actions-left">
             <UiButton
-              v-if="!applicationId"
-              :loading="submitLoading"
-              :disabled="submitLoading"
-              appearance="primary"
-              size="sm"
-              @click="submitApplicationByCompany"
-            >
-              Отправить заявку
-            </UiButton>
-
-            <UiButton
-              v-if="applicationId"
               :loading="statusLoading"
               :disabled="statusLoading"
               appearance="secondary"
@@ -127,7 +100,7 @@
             </UiButton>
 
             <UiButton
-              v-if="applicationId && !isIute"
+              v-if="!isIute"
               :loading="contractsLoading"
               :disabled="contractsLoading"
               appearance="secondary"
@@ -138,7 +111,7 @@
             </UiButton>
 
             <UiButton
-              v-if="applicationId && !isIute"
+              v-if="!isIute"
               :loading="requestDataLoading"
               :disabled="requestDataLoading"
               appearance="secondary"
@@ -151,7 +124,7 @@
 
           <div class="mi-actions-right">
             <button
-              v-if="applicationId && canCancel"
+              v-if="canCancel"
               :disabled="cancelLoading"
               class="mi-cancel-btn"
               @click="showCancelDialog = true"
