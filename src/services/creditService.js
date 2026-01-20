@@ -1,5 +1,6 @@
 const microinvest = require('../clients/microinvest');
 const easycredit = require('../clients/easycredit');
+const iute = require('../clients/iute');
 const simla = require('../clients/simla');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -8,6 +9,7 @@ const { ARCHIVED_ORDER_STATUSES } = require('./feedRepository');
 
 const CREDIT_COMPANY_EASYCREDIT = 'easycredit';
 const CREDIT_COMPANY_MICROINVEST = 'microinvest';
+const CREDIT_COMPANY_IUTE = 'iute';
 
 const productIdToName = Object.entries(config.loanProducts).reduce((acc, [key, id]) => {
     acc[id] = key;
@@ -1568,6 +1570,188 @@ class CreditService {
         } catch (error) {
             logger.error('syncCrmHistory failed', { error: error.message });
             return { processed: 0, saved: 0, error: error.message };
+        }
+    }
+
+    async submitIuteApplication(orderId, phone, amount, managerData = {}) {
+        logger.info('Submitting Iute application', { orderId, phone, amount, managerData });
+
+        if (pendingSubmissions.has(orderId)) {
+            throw new Error(`Заявка для заказа ${orderId} уже в процессе отправки`);
+        }
+
+        pendingSubmissions.add(orderId);
+
+        try {
+            const order = await simla.getOrder(orderId);
+            if (!order) {
+                throw new Error(`Заказ ${orderId} не найден в CRM`);
+            }
+
+            const orderData = simla.extractOrderData(order);
+
+            if (orderData.loanApplicationId) {
+                throw new Error(`Заказ ${orderId} уже имеет заявку: ${orderData.loanApplicationId}`);
+            }
+
+            const finalAmount = amount || orderData.totalSumm;
+            const customerPhone = phone || orderData.phone;
+
+            if (!customerPhone) {
+                throw new Error('Телефон клиента не указан в заказе');
+            }
+
+            const formattedPhone = this.formatPhone(customerPhone);
+
+            const iuteOrderId = `CRM-${orderId}`;
+
+            const result = await iute.createOrder({
+                orderId: iuteOrderId,
+                phone: formattedPhone,
+                amount: finalAmount,
+                currency: 'MDL',
+                items: order.items?.map(item => ({
+                    name: item.offer?.displayName || item.offer?.name || 'Товар',
+                    id: String(item.offer?.id || item.id),
+                    sku: item.offer?.article,
+                    price: item.initialPrice,
+                    quantity: item.quantity,
+                    imageUrl: item.offer?.images?.[0],
+                    url: item.offer?.url
+                }))
+            });
+
+            await simla.updateOrderFields(orderId, {
+                [config.crmFields.loanApplicationId]: iuteOrderId,
+                [config.crmFields.creditCompany]: CREDIT_COMPANY_IUTE
+            });
+
+            const crmStatus = config.iuteStatusMapping[result.status];
+            if (crmStatus) {
+                await simla.updateOrderPaymentStatus(orderId, crmStatus);
+            }
+
+            await feedRepository.saveApplication({
+                applicationId: iuteOrderId,
+                orderNumber: orderId,
+                creditCompany: CREDIT_COMPANY_IUTE,
+                bankStatus: result.status,
+                customerName: orderData.customerFullName,
+                customerPhone: formattedPhone,
+                amount: finalAmount,
+                term: null,
+                productName: null
+            });
+
+            await feedRepository.saveStatusHistory({
+                applicationId: iuteOrderId,
+                statusType: 'bank',
+                oldStatus: null,
+                newStatus: result.status,
+                source: 'api',
+                details: result.myiuteCustomer ? 'Клиент MyIute' : 'Клиент не в MyIute, отправлено SMS',
+                managerId: managerData.managerId,
+                managerName: managerData.managerName
+            });
+
+            logger.info('Iute application submitted', {
+                orderId,
+                iuteOrderId,
+                status: result.status,
+                myiuteCustomer: result.myiuteCustomer
+            });
+
+            return {
+                success: true,
+                applicationId: iuteOrderId,
+                status: result.status,
+                message: result.message,
+                myiuteCustomer: result.myiuteCustomer
+            };
+        } finally {
+            pendingSubmissions.delete(orderId);
+        }
+    }
+
+    async handleIuteWebhook(type, body, timestamp, signature) {
+        const { orderId, totalAmount, description } = body;
+
+        logger.info('Processing Iute webhook', { type, orderId, totalAmount, description });
+
+        const application = await feedRepository.getApplicationByApplicationId(orderId);
+        if (!application) {
+            logger.warn('Iute webhook: application not found', { orderId });
+            throw new Error(`Application not found: ${orderId}`);
+        }
+
+        const crmOrderId = application.orderNumber;
+        const oldStatus = application.bankStatus;
+        let newStatus;
+
+        if (type === 'confirm') {
+            newStatus = 'PAID';
+        } else if (type === 'cancel') {
+            newStatus = 'CANCELLED';
+        } else {
+            throw new Error(`Unknown webhook type: ${type}`);
+        }
+
+        await feedRepository.updateApplicationStatus(orderId, newStatus);
+
+        const crmStatus = config.iuteStatusMapping[newStatus];
+        if (crmStatus && crmOrderId) {
+            await simla.updateOrderPaymentStatus(crmOrderId, crmStatus);
+        }
+
+        await feedRepository.saveStatusHistory({
+            applicationId: orderId,
+            statusType: 'bank',
+            oldStatus,
+            newStatus,
+            source: 'webhook',
+            details: description || (type === 'confirm' ? 'Кредит выдан' : 'Заявка отменена')
+        });
+
+        logger.info('Iute webhook processed', {
+            orderId,
+            type,
+            oldStatus,
+            newStatus,
+            crmOrderId
+        });
+
+        return { success: true, status: newStatus };
+    }
+
+    async checkIuteApplicationStatus(applicationId) {
+        try {
+            const result = await iute.getOrderStatus(applicationId);
+            if (!result) {
+                return null;
+            }
+
+            const application = await feedRepository.getApplicationByApplicationId(applicationId);
+            if (application && application.bankStatus !== result.status) {
+                await feedRepository.updateApplicationStatus(applicationId, result.status);
+
+                const crmStatus = config.iuteStatusMapping[result.status];
+                if (crmStatus && application.orderNumber) {
+                    await simla.updateOrderPaymentStatus(application.orderNumber, crmStatus);
+                }
+
+                await feedRepository.saveStatusHistory({
+                    applicationId,
+                    statusType: 'bank',
+                    oldStatus: application.bankStatus,
+                    newStatus: result.status,
+                    source: 'cron'
+                });
+            }
+
+            return result;
+        } catch (error) {
+            logger.error('Failed to check Iute application status', { applicationId, error: error.message });
+            return null;
         }
     }
 }

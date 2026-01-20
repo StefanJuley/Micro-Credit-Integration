@@ -22,6 +22,40 @@
   border-radius: 6px;
   border: 1px solid #e5e7eb;
 }
+.mi-create-form {
+  margin-top: 12px;
+}
+.mi-form-row {
+  margin-bottom: 12px;
+}
+.mi-form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+.mi-form-select,
+.mi-form-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+}
+.mi-form-select:focus,
+.mi-form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+.mi-form-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 4px;
+}
 .mi-section-title {
   margin: 0 0 12px 0;
   font-size: 14px;

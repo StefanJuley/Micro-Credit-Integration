@@ -443,6 +443,65 @@ app.post('/api/file-cleanup', async (req, res) => {
     }
 });
 
+app.post('/api/iute/confirm', async (req, res) => {
+    const timestamp = req.headers['x-iute-timestamp'];
+    const signature = req.headers['x-iute-signature'];
+
+    logger.info('Iute confirm webhook received', {
+        orderId: req.body?.orderId,
+        totalAmount: req.body?.totalAmount
+    });
+
+    try {
+        const result = await creditService.handleIuteWebhook('confirm', req.body, timestamp, signature);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        logger.error('Iute confirm webhook failed', { error: error.message });
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/iute/cancel', async (req, res) => {
+    const timestamp = req.headers['x-iute-timestamp'];
+    const signature = req.headers['x-iute-signature'];
+
+    logger.info('Iute cancel webhook received', {
+        orderId: req.body?.orderId,
+        description: req.body?.description
+    });
+
+    try {
+        const result = await creditService.handleIuteWebhook('cancel', req.body, timestamp, signature);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        logger.error('Iute cancel webhook failed', { error: error.message });
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/send-iute-application', async (req, res) => {
+    const { orderId, phone, amount, managerId, managerName } = req.body;
+
+    if (!orderId) {
+        return res.status(400).json({ success: false, error: 'orderId is required' });
+    }
+
+    if (!phone) {
+        return res.status(400).json({ success: false, error: 'phone is required' });
+    }
+
+    try {
+        const result = await creditService.submitIuteApplication(orderId, phone, amount, { managerId, managerName });
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to submit Iute application', { orderId, error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 const cronExpression = `*/${config.cron.statusCheckInterval} * * * *`;
 logger.info(`Setting up cron job with interval: every ${config.cron.statusCheckInterval} minutes`);
 

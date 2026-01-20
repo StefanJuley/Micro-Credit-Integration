@@ -85,6 +85,21 @@
 
         <div v-else-if="!applicationId" class="mi-section">
           <p class="mi-info-text">Заявка еще не создана</p>
+
+          <div class="mi-create-form">
+            <div class="mi-form-row">
+              <label class="mi-form-label">Кредитная компания:</label>
+              <select v-model="selectedCompany" class="mi-form-select">
+                <option value="microinvest">Microinvest</option>
+                <option value="easycredit">Easy Credit</option>
+                <option value="iute">Iute Credit</option>
+              </select>
+            </div>
+
+            <p v-if="selectedCompany === 'iute'" class="mi-form-hint">
+              Клиент должен быть зарегистрирован в MyIute. Телефон берётся из заказа.
+            </p>
+          </div>
         </div>
 
         <div class="mi-actions">
@@ -95,7 +110,7 @@
               :disabled="submitLoading"
               appearance="primary"
               size="sm"
-              @click="submitApplication"
+              @click="submitApplicationByCompany"
             >
               Отправить заявку
             </UiButton>
@@ -112,7 +127,7 @@
             </UiButton>
 
             <UiButton
-              v-if="applicationId"
+              v-if="applicationId && !isIute"
               :loading="contractsLoading"
               :disabled="contractsLoading"
               appearance="secondary"
@@ -123,7 +138,7 @@
             </UiButton>
 
             <UiButton
-              v-if="applicationId"
+              v-if="applicationId && !isIute"
               :loading="requestDataLoading"
               :disabled="requestDataLoading"
               appearance="secondary"
@@ -639,9 +654,14 @@ const newMessage = ref('');
 const showCancelDialog = ref(false);
 const cancelReason = ref('');
 const requestData = ref<any>(null);
+const selectedCompany = ref('microinvest');
 
 const isEasyCredit = computed(() => {
   return comparisonData.value?.creditCompany === 'easycredit';
+});
+
+const isIute = computed(() => {
+  return comparisonData.value?.creditCompany === 'iute';
 });
 
 const isRejected = computed(() => {
@@ -697,7 +717,8 @@ const statusOptions = [
 const companyOptions = [
   { value: '', label: 'Все компании' },
   { value: 'microinvest', label: 'Microinvest' },
-  { value: 'easycredit', label: 'Easy Credit' }
+  { value: 'easycredit', label: 'Easy Credit' },
+  { value: 'iute', label: 'Iute Credit' }
 ];
 
 const managerOptions = computed(() => {
@@ -944,6 +965,53 @@ async function submitApplication() {
 
     if (data.success) {
       message.value = `Заявка отправлена! ID: ${data.applicationId}`;
+      messageType.value = 'success';
+      applicationId.value = data.applicationId;
+      await loadComparisonData();
+    } else {
+      message.value = `Ошибка: ${data.error || 'Ошибка отправки'}`;
+      messageType.value = 'error';
+    }
+  } catch (err: any) {
+    message.value = `Ошибка: ${err.message}`;
+    messageType.value = 'error';
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
+async function submitApplicationByCompany() {
+  if (selectedCompany.value === 'iute') {
+    await submitIuteApplication();
+  } else {
+    await submitApplication();
+  }
+}
+
+async function submitIuteApplication() {
+  if (!orderId.value) return;
+
+  submitLoading.value = true;
+  message.value = '';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/send-iute-application`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: orderId.value,
+        managerId: currentUserId.value,
+        managerName: currentUserDisplayName.value
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      const statusMsg = data.myiuteCustomer
+        ? 'Заявка отправлена! Клиент получит уведомление в MyIute.'
+        : 'Заявка создана! Клиенту отправлено SMS для регистрации в MyIute.';
+      message.value = `${statusMsg} ID: ${data.applicationId}`;
       messageType.value = 'success';
       applicationId.value = data.applicationId;
       await loadComparisonData();
@@ -1323,6 +1391,7 @@ function getCreditCompanyName(company: string): string {
   const companyMap: Record<string, string> = {
     'microinvest': 'Microinvest',
     'easycredit': 'Easy Credit',
+    'iute': 'Iute Credit',
   };
   return companyMap[company] || company || '-';
 }
@@ -1358,6 +1427,11 @@ function getStatusText(status: string): string {
     'More Data': 'Требуются данные',
     'Disbursed': 'Выдан',
     'Settled': 'Погашен',
+    'CUSTOMER_NOT_EXISTS': 'Клиент не в MyIute',
+    'PENDING': 'Ожидает клиента',
+    'IN_PROGRESS': 'Одобрено, ждёт подписи',
+    'PAID': 'Выдан',
+    'CANCELLED': 'Отменена',
   };
   return statusMap[status] || status || '-';
 }
@@ -1411,9 +1485,9 @@ function toggleArchiveView() {
 
 function getFeedItemClass(item: any): string {
   if (item.conditionsChanged) return 'conditions-changed';
-  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Disbursed', 'Settled', 'Issued', 'PendingIssue'];
-  const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled'];
-  const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
+  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'Disbursed', 'Settled', 'Issued', 'PendingIssue', 'IN_PROGRESS', 'PAID'];
+  const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled', 'CANCELLED'];
+  const processingStatuses = ['Processing', 'Placed', 'New', 'More Data', 'PENDING', 'CUSTOMER_NOT_EXISTS'];
   if (approvedStatuses.includes(item.bankStatus)) return 'approved';
   if (refusedStatuses.includes(item.bankStatus)) return 'refused';
   if (processingStatuses.includes(item.bankStatus)) return 'processing';
@@ -1421,10 +1495,10 @@ function getFeedItemClass(item: any): string {
 }
 
 function getStatusClass(status: string): string {
-  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically'];
-  const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled'];
-  const processingStatuses = ['Processing', 'Placed', 'New', 'More Data'];
-  const issuedStatuses = ['Issued', 'Disbursed', 'Settled'];
+  const approvedStatuses = ['Approved', 'SignedOnline', 'SignedPhysically', 'IN_PROGRESS'];
+  const refusedStatuses = ['Refused', 'Rejected', 'IssueRejected', 'Canceled', 'Cancelled', 'CANCELLED'];
+  const processingStatuses = ['Processing', 'Placed', 'New', 'More Data', 'PENDING', 'CUSTOMER_NOT_EXISTS'];
+  const issuedStatuses = ['Issued', 'Disbursed', 'Settled', 'PAID'];
   if (approvedStatuses.includes(status)) return 'status-approved';
   if (refusedStatuses.includes(status)) return 'status-refused';
   if (processingStatuses.includes(status)) return 'status-processing';
@@ -1570,6 +1644,46 @@ async function moveToDelivering(item: any) {
   padding: 12px;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
+}
+
+.mi-create-form {
+  margin-top: 12px;
+}
+
+.mi-form-row {
+  margin-bottom: 12px;
+}
+
+.mi-form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.mi-form-select,
+.mi-form-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+}
+
+.mi-form-select:focus,
+.mi-form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.mi-form-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 4px;
 }
 
 .mi-section-title {

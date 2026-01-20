@@ -20,6 +20,14 @@ module.exports = {
         environment: process.env.EASYCREDIT_ENVIRONMENT || 'TEST'
     },
 
+    iute: {
+        apiUrl: process.env.IUTE_API_URL,
+        apiKey: process.env.IUTE_API_KEY,
+        posId: process.env.IUTE_POS_ID,
+        salesmanId: process.env.IUTE_SALESMAN_ID || process.env.IUTE_POS_ID,
+        webhookBaseUrl: process.env.IUTE_WEBHOOK_BASE_URL || 'https://credit.pandashop.md'
+    },
+
     simla: {
         apiUrl: process.env.SIMLA_API_URL,
         apiKey: process.env.SIMLA_API_KEY
@@ -60,8 +68,17 @@ module.exports = {
         'Settled': 'paid'
     },
 
+    iuteStatusMapping: {
+        'CUSTOMER_NOT_EXISTS': 'credit-check',
+        'PENDING': 'credit-check',
+        'IN_PROGRESS': 'credit-approved',
+        'PAID': 'paid',
+        'CANCELLED': 'credit-declined'
+    },
+
     finalStatuses: ['Refused', 'Issued', 'IssueRejected'],
     easyCreditFinalStatuses: ['Refused', 'Rejected', 'Canceled', 'Disbursed', 'Settled'],
+    iuteFinalStatuses: ['PAID', 'CANCELLED'],
 
     crmFields: {
         idnp: 'indp',

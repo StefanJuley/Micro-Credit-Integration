@@ -21,6 +21,11 @@ services:
       - EASYCREDIT_LOGIN=${EASYCREDIT_LOGIN}
       - EASYCREDIT_PASSWORD=${EASYCREDIT_PASSWORD}
       - EASYCREDIT_ENVIRONMENT=${EASYCREDIT_ENVIRONMENT:-TEST}
+      - IUTE_API_URL=${IUTE_API_URL}
+      - IUTE_API_KEY=${IUTE_API_KEY}
+      - IUTE_POS_ID=${IUTE_POS_ID}
+      - IUTE_SALESMAN_ID=${IUTE_SALESMAN_ID}
+      - IUTE_WEBHOOK_BASE_URL=${IUTE_WEBHOOK_BASE_URL:-https://credit.pandashop.md}
     depends_on:
       postgres:
         condition: service_healthy
