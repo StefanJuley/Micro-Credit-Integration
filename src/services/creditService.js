@@ -1747,14 +1747,14 @@ class CreditService {
                 items
             });
 
-            await simla.updateOrderFields(orderId, {
+            await simla.updateOrderCustomFields(orderId, {
                 [config.crmFields.loanApplicationId]: iuteOrderId,
                 [config.crmFields.creditCompany]: CREDIT_COMPANY_IUTE
             });
 
             const crmStatus = config.iuteStatusMapping[result.status];
-            if (crmStatus) {
-                await simla.updateOrderPaymentStatus(orderId, crmStatus);
+            if (crmStatus && orderData.payment?.id) {
+                await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
             }
 
             await feedRepository.saveApplication({
