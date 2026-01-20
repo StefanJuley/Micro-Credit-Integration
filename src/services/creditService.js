@@ -1714,31 +1714,37 @@ class CreditService {
                 throw new Error(`Заказ ${orderId} уже имеет заявку: ${orderData.loanApplicationId}`);
             }
 
-            const finalAmount = amount || orderData.totalSumm;
+            const finalAmount = amount || orderData.totalSumm || orderData.payment?.amount;
             const customerPhone = phone || orderData.phone;
 
             if (!customerPhone) {
                 throw new Error('Телефон клиента не указан в заказе');
             }
 
+            if (!finalAmount) {
+                throw new Error('Сумма заказа не указана');
+            }
+
             const formattedPhone = this.formatPhone(customerPhone);
 
             const iuteOrderId = `CRM-${orderId}`;
 
+            const items = order.items?.map(item => ({
+                name: item.offer?.displayName || item.offer?.name || 'Товар',
+                id: String(item.offer?.id || item.id || '0'),
+                sku: item.offer?.article || item.offer?.id || 'N/A',
+                price: item.initialPrice || 0,
+                quantity: item.quantity || 1,
+                imageUrl: item.offer?.images?.[0] || 'https://pandashop.md/favicon.ico',
+                url: item.offer?.url || `https://pandashop.md/product/${item.offer?.id || item.id || '0'}`
+            })) || [];
+
             const result = await iute.createOrder({
                 orderId: iuteOrderId,
                 phone: formattedPhone,
-                amount: finalAmount,
+                amount: parseFloat(finalAmount),
                 currency: 'MDL',
-                items: order.items?.map(item => ({
-                    name: item.offer?.displayName || item.offer?.name || 'Товар',
-                    id: String(item.offer?.id || item.id),
-                    sku: item.offer?.article,
-                    price: item.initialPrice,
-                    quantity: item.quantity,
-                    imageUrl: item.offer?.images?.[0],
-                    url: item.offer?.url
-                }))
+                items
             });
 
             await simla.updateOrderFields(orderId, {
