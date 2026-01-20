@@ -68,6 +68,15 @@ class IuteClient {
 
             return response.data;
         } catch (error) {
+            if (error.response?.status === 404 && error.response?.data?.status) {
+                logger.info('Iute createOrder - customer not in MyIute, SMS sent', {
+                    orderId: orderData.orderId,
+                    status: error.response.data.status,
+                    message: error.response.data.message
+                });
+                return error.response.data;
+            }
+
             logger.error('Iute createOrder failed', {
                 orderId: orderData.orderId,
                 error: error.message,
