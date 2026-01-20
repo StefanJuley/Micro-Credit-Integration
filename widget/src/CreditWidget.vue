@@ -1144,8 +1144,9 @@ function getSourceText(item: any): string {
     return item.managerName;
   }
   const sourceMap: Record<string, string> = {
-    'api': 'Менеджер',
+    'api': 'Автоматически',
     'cron': 'Автоматически',
+    'user': 'Менеджер',
     'webhook': 'Webhook',
     'manual': 'Вручную',
   };

@@ -1464,6 +1464,112 @@ class CreditService {
             totalDeleted
         };
     }
+
+    async syncCrmHistory() {
+        const TRACKED_FIELDS = [
+            'payments.status',
+            'customFields.credit_sum',
+            'customFields.credit_term',
+            'customFields.credit_company'
+        ];
+
+        const FIELD_LABELS = {
+            'payments.status': 'Статус платежа',
+            'customFields.credit_sum': 'Сумма кредита',
+            'customFields.credit_term': 'Срок кредита',
+            'customFields.credit_company': 'Кредитная компания'
+        };
+
+        try {
+            const lastSyncId = await feedRepository.getSyncMetadata('lastHistoryId');
+            const sinceId = lastSyncId ? parseInt(lastSyncId) : null;
+
+            const { history } = await simla.getOrdersHistory(sinceId, 100);
+
+            if (!history || history.length === 0) {
+                return { processed: 0, saved: 0 };
+            }
+
+            let processed = 0;
+            let saved = 0;
+            let maxId = sinceId || 0;
+
+            for (const change of history) {
+                if (change.id > maxId) {
+                    maxId = change.id;
+                }
+
+                if (change.source !== 'user') {
+                    continue;
+                }
+
+                const fieldPath = change.field;
+                if (!TRACKED_FIELDS.some(f => fieldPath?.startsWith(f))) {
+                    continue;
+                }
+
+                const orderId = change.order?.id;
+                if (!orderId) continue;
+
+                try {
+                    const order = await simla.getOrder(orderId);
+                    if (!order) continue;
+
+                    const orderData = simla.extractOrderData(order);
+                    const applicationId = orderData.loanApplicationId;
+
+                    if (!applicationId) continue;
+
+                    let managerName = null;
+                    if (change.user?.id) {
+                        managerName = await simla.getUserName(change.user.id);
+                    }
+
+                    const fieldLabel = FIELD_LABELS[fieldPath] || fieldPath;
+                    const details = `${fieldLabel}: ${change.oldValue || '-'} -> ${change.newValue || '-'}`;
+
+                    await feedRepository.saveStatusHistory({
+                        applicationId,
+                        statusType: 'crm',
+                        oldStatus: String(change.oldValue || ''),
+                        newStatus: String(change.newValue || ''),
+                        source: 'user',
+                        details,
+                        managerId: change.user?.id || null,
+                        managerName
+                    });
+
+                    saved++;
+                    logger.debug('CRM history change saved', {
+                        orderId,
+                        applicationId,
+                        field: fieldPath,
+                        managerName
+                    });
+                } catch (err) {
+                    logger.error('Failed to process history change', {
+                        changeId: change.id,
+                        error: err.message
+                    });
+                }
+
+                processed++;
+            }
+
+            if (maxId > (sinceId || 0)) {
+                await feedRepository.saveSyncMetadata('lastHistoryId', String(maxId));
+            }
+
+            if (saved > 0) {
+                logger.info('CRM history sync completed', { processed, saved });
+            }
+
+            return { processed, saved };
+        } catch (error) {
+            logger.error('syncCrmHistory failed', { error: error.message });
+            return { processed: 0, saved: 0, error: error.message };
+        }
+    }
 }
 
 module.exports = new CreditService();

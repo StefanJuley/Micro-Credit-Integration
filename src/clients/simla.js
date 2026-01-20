@@ -563,6 +563,49 @@ class SimlaClient {
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
+
+    async getOrdersHistory(sinceId = null, limit = 100) {
+        try {
+            const params = { limit };
+            if (sinceId) {
+                params.sinceId = sinceId;
+            }
+            const response = await this.client.get(`/orders/history?${this.buildParams(params)}`);
+            return {
+                history: response.data?.history || [],
+                pagination: response.data?.pagination || {},
+                generatedAt: response.data?.generatedAt
+            };
+        } catch (error) {
+            logger.error('getOrdersHistory failed', { sinceId, error: error.message });
+            return { history: [], pagination: {} };
+        }
+    }
+
+    async getUserById(userId) {
+        if (this.usersCache.has(userId)) {
+            return this.usersCache.get(userId);
+        }
+
+        try {
+            const response = await this.client.get(`/users/${userId}?${this.buildParams()}`);
+            const user = response.data?.user;
+            if (user) {
+                this.usersCache.set(userId, user);
+            }
+            return user;
+        } catch (error) {
+            logger.error('getUserById failed', { userId, error: error.message });
+            return null;
+        }
+    }
+
+    async getUserName(userId) {
+        const user = await this.getUserById(userId);
+        if (!user) return null;
+        const parts = [user.firstName, user.lastName].filter(Boolean);
+        return parts.length > 0 ? parts.join(' ') : user.email || `User #${userId}`;
+    }
 }
 
 module.exports = new SimlaClient();

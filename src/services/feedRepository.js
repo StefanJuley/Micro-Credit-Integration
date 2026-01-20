@@ -234,6 +234,21 @@ class FeedRepository {
         });
     }
 
+    async getSyncMetadata(key) {
+        const record = await prisma.syncMetadata.findUnique({
+            where: { key }
+        });
+        return record?.value || null;
+    }
+
+    async saveSyncMetadata(key, value) {
+        await prisma.syncMetadata.upsert({
+            where: { key },
+            update: { value },
+            create: { key, value }
+        });
+    }
+
     async disconnect() {
         await prisma.$disconnect();
     }

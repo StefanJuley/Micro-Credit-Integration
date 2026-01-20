@@ -456,6 +456,14 @@ cron.schedule(cronExpression, async () => {
     }
 });
 
+cron.schedule('* * * * *', async () => {
+    try {
+        await creditService.syncCrmHistory();
+    } catch (error) {
+        logger.error('CRM history sync cron failed', { error: error.message });
+    }
+});
+
 cron.schedule('0 3 * * *', async () => {
     logger.info('Daily file cleanup cron started');
     try {
