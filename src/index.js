@@ -486,10 +486,6 @@ app.post('/api/send-iute-application', async (req, res) => {
         return res.status(400).json({ success: false, error: 'orderId is required' });
     }
 
-    if (!phone) {
-        return res.status(400).json({ success: false, error: 'phone is required' });
-    }
-
     try {
         const result = await creditService.submitIuteApplication(orderId, phone, amount, { managerId, managerName });
         res.json(result);

@@ -92,11 +92,11 @@
               <select v-model="selectedCompany" class="mi-form-select">
                 <option value="microinvest">Microinvest</option>
                 <option value="easycredit">Easy Credit</option>
-                <option value="iute">Iute Credit</option>
+                <option value="iutecredit">Iute Credit</option>
               </select>
             </div>
 
-            <p v-if="selectedCompany === 'iute'" class="mi-form-hint">
+            <p v-if="selectedCompany === 'iutecredit'" class="mi-form-hint">
               Клиент должен быть зарегистрирован в MyIute. Телефон берётся из заказа.
             </p>
           </div>
@@ -661,7 +661,7 @@ const isEasyCredit = computed(() => {
 });
 
 const isIute = computed(() => {
-  return comparisonData.value?.creditCompany === 'iute';
+  return comparisonData.value?.creditCompany === 'iutecredit';
 });
 
 const isRejected = computed(() => {
@@ -718,7 +718,7 @@ const companyOptions = [
   { value: '', label: 'Все компании' },
   { value: 'microinvest', label: 'Microinvest' },
   { value: 'easycredit', label: 'Easy Credit' },
-  { value: 'iute', label: 'Iute Credit' }
+  { value: 'iutecredit', label: 'Iute Credit' }
 ];
 
 const managerOptions = computed(() => {
@@ -981,7 +981,7 @@ async function submitApplication() {
 }
 
 async function submitApplicationByCompany() {
-  if (selectedCompany.value === 'iute') {
+  if (selectedCompany.value === 'iutecredit') {
     await submitIuteApplication();
   } else {
     await submitApplication();
@@ -1391,7 +1391,7 @@ function getCreditCompanyName(company: string): string {
   const companyMap: Record<string, string> = {
     'microinvest': 'Microinvest',
     'easycredit': 'Easy Credit',
-    'iute': 'Iute Credit',
+    'iutecredit': 'Iute Credit',
   };
   return companyMap[company] || company || '-';
 }

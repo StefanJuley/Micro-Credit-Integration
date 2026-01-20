@@ -9,7 +9,7 @@ const { ARCHIVED_ORDER_STATUSES } = require('./feedRepository');
 
 const CREDIT_COMPANY_EASYCREDIT = 'easycredit';
 const CREDIT_COMPANY_MICROINVEST = 'microinvest';
-const CREDIT_COMPANY_IUTE = 'iute';
+const CREDIT_COMPANY_IUTE = 'iutecredit';
 
 const productIdToName = Object.entries(config.loanProducts).reduce((acc, [key, id]) => {
     acc[id] = key;
