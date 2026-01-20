@@ -1758,15 +1758,17 @@ class CreditService {
             }
 
             await feedRepository.saveApplicationRequest({
+                orderId,
                 applicationId: iuteOrderId,
-                orderNumber: orderId,
                 creditCompany: CREDIT_COMPANY_IUTE,
-                bankStatus: result.status,
-                customerName: orderData.customerFullName,
-                customerPhone: formattedPhone,
-                amount: finalAmount,
-                term: null,
-                productName: null
+                requestData: {
+                    phone: formattedPhone,
+                    amount: finalAmount,
+                    status: result.status,
+                    myiuteCustomer: result.myiuteCustomer
+                },
+                filesCount: 0,
+                fileNames: []
             });
 
             await feedRepository.saveStatusHistory({
