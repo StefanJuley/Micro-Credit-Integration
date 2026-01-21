@@ -71,7 +71,7 @@ module.exports = {
     iuteStatusMapping: {
         'CUSTOMER_NOT_EXISTS': 'credit-check',
         'PENDING': 'credit-check',
-        'IN_PROGRESS': 'credit-approved',
+        'IN_PROGRESS': 'credit-check',
         'PAID': 'paid',
         'CANCELLED': 'credit-declined'
     },
