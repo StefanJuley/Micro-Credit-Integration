@@ -1780,15 +1780,38 @@ class CreditService {
 
             const iuteOrderId = `CRM-${orderId}`;
 
-            const items = order.items?.map(item => ({
-                name: item.offer?.displayName || item.offer?.name || 'Товар',
-                id: String(item.offer?.id || item.id || '0'),
-                sku: item.offer?.article || item.offer?.id || 'N/A',
-                price: item.initialPrice || 0,
-                quantity: item.quantity || 1,
-                imageUrl: item.offer?.images?.[0] || 'https://pandashop.md/favicon.ico',
-                url: item.offer?.url || `https://pandashop.md/product/${item.offer?.id || item.id || '0'}`
-            })) || [];
+            const items = order.items?.map(item => {
+                const firstImage = item.offer?.images?.[0];
+                const imageUrl = typeof firstImage === 'string'
+                    ? firstImage
+                    : (firstImage?.imageUrl || firstImage?.url || null);
+
+                const productUrl = item.offer?.url
+                    || item.offer?.externalUrl
+                    || (item.offer?.externalId ? `https://pandashop.md/product/${item.offer.externalId}` : null)
+                    || `https://pandashop.md/product/${item.offer?.id || item.id || '0'}`;
+
+                logger.debug('Iute item data', {
+                    orderId,
+                    offerId: item.offer?.id,
+                    offerName: item.offer?.displayName || item.offer?.name,
+                    imagesRaw: item.offer?.images,
+                    imageUrl,
+                    urlRaw: item.offer?.url,
+                    externalUrl: item.offer?.externalUrl,
+                    productUrl
+                });
+
+                return {
+                    name: item.offer?.displayName || item.offer?.name || 'Товар',
+                    id: String(item.offer?.id || item.id || '0'),
+                    sku: item.offer?.article || String(item.offer?.id || 'N/A'),
+                    price: item.initialPrice || 0,
+                    quantity: item.quantity || 1,
+                    imageUrl: imageUrl || 'https://pandashop.md/favicon.ico',
+                    url: productUrl
+                };
+            }) || [];
 
             const result = await iute.createOrder({
                 orderId: iuteOrderId,
