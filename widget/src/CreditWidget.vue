@@ -311,23 +311,23 @@
     <div class="mi-feed-content">
       <div class="mi-feed-controls">
         <div class="mi-feed-filters-row">
-          <div class="mi-dropdown" v-click-outside="() => statusDropdownOpen = false">
+          <div class="mi-dropdown" v-click-outside="() => managerDropdownOpen = false">
             <button
               type="button"
               class="mi-dropdown-trigger"
-              :class="{ 'is-open': statusDropdownOpen, 'has-value': feedStatusFilter }"
-              @click="statusDropdownOpen = !statusDropdownOpen"
+              :class="{ 'is-open': managerDropdownOpen, 'has-value': feedManagerFilter }"
+              @click="managerDropdownOpen = !managerDropdownOpen"
             >
-              <span class="mi-dropdown-text">{{ getStatusFilterLabel(feedStatusFilter) }}</span>
+              <span class="mi-dropdown-text">{{ getManagerFilterLabel(feedManagerFilter) }}</span>
               <span class="mi-dropdown-arrow"></span>
             </button>
-            <div v-if="statusDropdownOpen" class="mi-dropdown-menu">
+            <div v-if="managerDropdownOpen" class="mi-dropdown-menu">
               <div
-                v-for="opt in statusOptions"
+                v-for="opt in managerOptions"
                 :key="opt.value"
                 class="mi-dropdown-item"
-                :class="{ 'is-selected': feedStatusFilter === opt.value }"
-                @click="selectStatusFilter(opt.value)"
+                :class="{ 'is-selected': feedManagerFilter === opt.value }"
+                @click="selectManagerFilter(opt.value)"
               >
                 {{ opt.label }}
               </div>
@@ -355,33 +355,34 @@
               </div>
             </div>
           </div>
-          <div class="mi-dropdown" v-click-outside="() => managerDropdownOpen = false">
+          <div class="mi-dropdown" v-click-outside="() => statusDropdownOpen = false">
             <button
               type="button"
               class="mi-dropdown-trigger"
-              :class="{ 'is-open': managerDropdownOpen, 'has-value': feedManagerFilter }"
-              @click="managerDropdownOpen = !managerDropdownOpen"
+              :class="{ 'is-open': statusDropdownOpen, 'has-value': feedStatusFilter }"
+              @click="statusDropdownOpen = !statusDropdownOpen"
             >
-              <span class="mi-dropdown-text">{{ getManagerFilterLabel(feedManagerFilter) }}</span>
+              <span class="mi-dropdown-text">{{ getStatusFilterLabel(feedStatusFilter) }}</span>
               <span class="mi-dropdown-arrow"></span>
             </button>
-            <div v-if="managerDropdownOpen" class="mi-dropdown-menu">
+            <div v-if="statusDropdownOpen" class="mi-dropdown-menu">
               <div
-                v-for="opt in managerOptions"
+                v-for="opt in statusOptions"
                 :key="opt.value"
                 class="mi-dropdown-item"
-                :class="{ 'is-selected': feedManagerFilter === opt.value }"
-                @click="selectManagerFilter(opt.value)"
+                :class="{ 'is-selected': feedStatusFilter === opt.value }"
+                @click="selectStatusFilter(opt.value)"
               >
                 {{ opt.label }}
               </div>
             </div>
           </div>
           <button
-            class="mi-action-btn mi-action-btn-primary mi-filter-btn"
-            @click="applyFilters"
+            class="mi-action-btn mi-action-btn-secondary mi-filter-btn"
+            :disabled="!hasActiveFilters"
+            @click="resetFilters"
           >
-            Применить
+            Сбросить
           </button>
         </div>
         <div class="mi-feed-filters-row">
@@ -393,13 +394,6 @@
               @update:value="updateSearchQuery"
             />
           </div>
-          <button
-            class="mi-action-btn mi-action-btn-secondary mi-filter-btn"
-            :disabled="!hasActiveFilters"
-            @click="resetFilters"
-          >
-            Сбросить
-          </button>
         </div>
       </div>
 
@@ -715,16 +709,19 @@ function getManagerFilterLabel(value: string): string {
 function selectStatusFilter(value: string) {
   feedStatusFilter.value = value;
   statusDropdownOpen.value = false;
+  applyFilters();
 }
 
 function selectCompanyFilter(value: string) {
   feedCompanyFilter.value = value;
   companyDropdownOpen.value = false;
+  applyFilters();
 }
 
 function selectManagerFilter(value: string) {
   feedManagerFilter.value = value;
   managerDropdownOpen.value = false;
+  applyFilters();
 }
 
 function filterFeedItems(items: any[], statusFilter: string, companyFilter: string, managerFilter: string, searchQuery: string): any[] {
@@ -2529,11 +2526,6 @@ async function moveToDelivering(item: any) {
   > span {
     width: 100%;
   }
-}
-
-.mi-feed-filters-row:last-child .mi-filter-btn {
-  margin-left: auto;
-  margin-right: 38px;
 }
 
 .mi-link-button {

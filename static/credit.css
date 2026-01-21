@@ -795,10 +795,6 @@
 .mi-search-wrapper > span {
   width: 100%;
 }
-.mi-feed-filters-row:last-child .mi-filter-btn {
-  margin-left: auto;
-  margin-right: 38px;
-}
 .mi-link-button {
   display: inline-flex;
   align-items: center;
