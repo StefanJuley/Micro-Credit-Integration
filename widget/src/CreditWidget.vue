@@ -96,7 +96,7 @@
               size="sm"
               @click="loadComparisonData"
             >
-              Обновить данные
+              Обновить
             </UiButton>
 
             <UiButton
