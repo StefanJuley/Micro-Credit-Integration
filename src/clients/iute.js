@@ -101,6 +101,14 @@ class IuteClient {
                 logger.warn('Iute order not found', { orderId });
                 return null;
             }
+            if (error.response?.status >= 500 && error.response?.status < 600) {
+                logger.error('Iute API server error', {
+                    orderId,
+                    status: error.response?.status,
+                    error: error.message
+                });
+                throw new Error(`Iute API временно недоступен (${error.response?.status}). Попробуйте позже.`);
+            }
             logger.error('Iute getOrderStatus failed', {
                 orderId,
                 error: error.message
