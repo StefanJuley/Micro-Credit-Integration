@@ -1444,10 +1444,21 @@ class CreditService {
 
                 const approvedStatuses = ['IN_PROGRESS', 'PAID'];
                 if (approvedStatuses.includes(statusResponse.status)) {
+                    const productName = statusResponse.productName || '';
+                    const productType = productName.toLowerCase().includes('smart') ? '0%' : 'retail';
+
                     approved = {
                         amount: requested.amount,
-                        term: null,
-                        productType: 'retail'
+                        term: statusResponse.loanDuration || null,
+                        productType
+                    };
+
+                    comparison = {
+                        amountMatch: true,
+                        termMatch: requested.term === approved.term,
+                        productMatch: requested.productType === approved.productType,
+                        hasChanges: requested.term !== approved.term ||
+                            requested.productType !== approved.productType
                     };
                 }
 
