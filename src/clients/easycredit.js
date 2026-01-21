@@ -175,7 +175,8 @@ class EasyCreditClient {
             logger.info('Files uploaded to Easy Credit', {
                 urn,
                 filesCount: files.length,
-                response: response.data?.detail?.status || 'OK'
+                status: response.data?.detail?.status || 'OK',
+                destinationUrl: response.data?.detail?.destination?.url || null
             });
 
             return response.data;
