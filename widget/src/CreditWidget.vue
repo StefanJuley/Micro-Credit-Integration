@@ -111,14 +111,14 @@
             </UiButton>
 
             <UiButton
-              v-if="!isIute"
-              :loading="requestDataLoading"
-              :disabled="requestDataLoading"
+              v-if="applicationId"
+              :loading="sendingFiles"
+              :disabled="sendingFiles"
               appearance="secondary"
               size="sm"
-              @click="loadRequestData"
+              @click="sendFilesToBank"
             >
-              Отправленные данные
+              Отправить прикрепленные документы
             </UiButton>
           </div>
 
@@ -238,16 +238,6 @@
               @click="sendMessageToBank"
             >
               Отправить
-            </UiButton>
-          </div>
-          <div v-if="applicationId" class="mi-send-files">
-            <UiButton
-              :loading="sendingFiles"
-              appearance="secondary"
-              size="sm"
-              @click="sendFilesToBank"
-            >
-              Отправить прикрепленные документы
             </UiButton>
           </div>
         </div>
