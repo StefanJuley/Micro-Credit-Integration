@@ -118,7 +118,7 @@
               size="sm"
               @click="sendFilesToBank"
             >
-              Отправить прикрепленные документы
+              Отправить файлы
             </UiButton>
           </div>
 
