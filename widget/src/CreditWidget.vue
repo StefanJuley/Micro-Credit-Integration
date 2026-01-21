@@ -763,16 +763,16 @@ function filterFeedItems(items: any[], statusFilter: string, companyFilter: stri
 function applyFilters() {
   const filtered = filterFeedItems(feedItems.value, feedStatusFilter.value, feedCompanyFilter.value, feedManagerFilter.value, feedSearchQuery.value);
   displayedFeedItems.value = [...filtered];
-  hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedManagerFilter.value !== '' || feedSearchQuery.value !== '';
+  const defaultManagerId = currentUserId.value ? String(currentUserId.value) : '';
+  hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedManagerFilter.value !== defaultManagerId || feedSearchQuery.value !== '';
 }
 
 function resetFilters() {
   feedStatusFilter.value = '';
   feedCompanyFilter.value = '';
-  feedManagerFilter.value = '';
+  feedManagerFilter.value = currentUserId.value ? String(currentUserId.value) : '';
   feedSearchQuery.value = '';
-  displayedFeedItems.value = [...feedItems.value];
-  hasActiveFilters.value = false;
+  applyFilters();
 }
 
 function onSearchKeydown(e: KeyboardEvent) {
@@ -782,8 +782,15 @@ function onSearchKeydown(e: KeyboardEvent) {
 }
 
 watch(showFeedModal, (opened) => {
-  if (opened && feedItems.value.length === 0) {
-    loadFeed();
+  if (opened) {
+    if (currentUserId.value) {
+      feedManagerFilter.value = String(currentUserId.value);
+    }
+    if (feedItems.value.length === 0) {
+      loadFeed();
+    } else {
+      applyFilters();
+    }
   }
 });
 
@@ -1439,7 +1446,7 @@ function toggleArchiveView() {
   isArchiveView.value = !isArchiveView.value;
   feedStatusFilter.value = '';
   feedCompanyFilter.value = '';
-  feedManagerFilter.value = '';
+  feedManagerFilter.value = currentUserId.value ? String(currentUserId.value) : '';
   feedSearchQuery.value = '';
   hasActiveFilters.value = false;
   loadFeed();
