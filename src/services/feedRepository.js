@@ -242,6 +242,33 @@ class FeedRepository {
         });
     }
 
+    async updateApplicationStatus(applicationId, bankStatus, crmStatus = null) {
+        try {
+            const updateData = { bankStatus };
+            if (crmStatus !== null) {
+                updateData.crmStatus = crmStatus;
+            }
+
+            return await prisma.feedItem.updateMany({
+                where: { applicationId },
+                data: updateData
+            });
+        } catch (error) {
+            logger.error('Failed to update application status', {
+                applicationId,
+                bankStatus,
+                crmStatus,
+                error: error.message
+            });
+        }
+    }
+
+    async getApplicationByApplicationId(applicationId) {
+        return await prisma.feedItem.findFirst({
+            where: { applicationId }
+        });
+    }
+
     async getSyncMetadata(key) {
         const record = await prisma.syncMetadata.findUnique({
             where: { key }
