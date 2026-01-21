@@ -1833,7 +1833,13 @@ class CreditService {
 
         const crmStatus = config.iuteStatusMapping[newStatus];
         if (crmStatus && crmOrderId) {
-            await simla.updateOrderPaymentStatus(crmOrderId, crmStatus);
+            const order = await simla.getOrder(crmOrderId);
+            if (order) {
+                const orderData = simla.extractOrderData(order);
+                if (orderData.payment?.id) {
+                    await simla.updatePaymentStatus(crmOrderId, orderData.payment.id, crmStatus, order.site);
+                }
+            }
         }
 
         await feedRepository.saveStatusHistory({
