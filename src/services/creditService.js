@@ -451,10 +451,15 @@ class CreditService {
     }
 
     async _checkIuteStatus(orderId, order, orderData) {
+        logger.info('Checking Iute status', {
+            orderId,
+            applicationId: orderData.loanApplicationId
+        });
+
         const statusResponse = await iute.getOrderStatus(orderData.loanApplicationId);
 
         if (!statusResponse) {
-            logger.debug('Iute order status not available', {
+            logger.info('Iute order status not available', {
                 orderId,
                 applicationId: orderData.loanApplicationId
             });

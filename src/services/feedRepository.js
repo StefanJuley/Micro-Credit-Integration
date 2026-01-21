@@ -174,8 +174,16 @@ class FeedRepository {
 
     async saveApplicationRequest(data) {
         try {
-            return await prisma.applicationRequest.create({
-                data: {
+            return await prisma.applicationRequest.upsert({
+                where: { applicationId: data.applicationId },
+                update: {
+                    orderId: data.orderId,
+                    creditCompany: data.creditCompany,
+                    requestData: data.requestData,
+                    filesCount: data.filesCount || 0,
+                    fileNames: data.fileNames || []
+                },
+                create: {
                     orderId: data.orderId,
                     applicationId: data.applicationId,
                     creditCompany: data.creditCompany,
