@@ -679,7 +679,7 @@ const companyOptions = [
 ];
 
 const managerOptions = computed(() => {
-  const options = [{ value: '', label: 'Все заявки' }];
+  const options: { value: string; label: string }[] = [];
 
   if (currentUserId.value) {
     options.push({
@@ -687,6 +687,8 @@ const managerOptions = computed(() => {
       label: currentUserDisplayName.value
     });
   }
+
+  options.push({ value: '', label: 'Все заявки' });
 
   return options;
 });
