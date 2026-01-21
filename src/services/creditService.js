@@ -31,6 +31,17 @@ class CreditService {
         return config.loanProducts['retail'];
     }
 
+    _getIuteStatusDescription(status) {
+        const descriptions = {
+            'CUSTOMER_NOT_EXISTS': 'Клиент не в MyIute, отправлено SMS',
+            'PENDING': 'Ожидает действий клиента в MyIute',
+            'IN_PROGRESS': 'Одобрено, ожидает подписи клиента',
+            'PAID': 'Договор подписан, кредит выдан',
+            'CANCELLED': 'Заявка отклонена или отменена'
+        };
+        return descriptions[status] || status;
+    }
+
     formatBirthday(birthday) {
         if (!birthday) return null;
         if (birthday.match(/^\d{4}-\d{2}-\d{2}$/)) return birthday;
@@ -477,12 +488,29 @@ class CreditService {
         const currentPaymentStatus = orderData.payment?.status;
         const isFinal = config.iuteFinalStatuses.includes(bankStatus);
 
-        if (currentPaymentStatus === crmStatus) {
+        const feedItem = await feedRepository.getApplicationByApplicationId(orderData.loanApplicationId);
+        const previousBankStatus = feedItem?.bankStatus;
+
+        const bankStatusChanged = previousBankStatus !== bankStatus;
+        const crmStatusChanged = currentPaymentStatus !== crmStatus;
+
+        if (!bankStatusChanged && !crmStatusChanged) {
             logger.debug('Iute status unchanged', { orderId, status: crmStatus });
             return { orderId, status: bankStatus, crmStatus, changed: false, isFinal };
         }
 
-        if (orderData.payment?.id) {
+        if (bankStatusChanged) {
+            await feedRepository.saveStatusHistory({
+                applicationId: orderData.loanApplicationId,
+                statusType: 'bank',
+                oldStatus: previousBankStatus,
+                newStatus: bankStatus,
+                source: 'cron',
+                details: this._getIuteStatusDescription(bankStatus)
+            });
+        }
+
+        if (crmStatusChanged && orderData.payment?.id) {
             await simla.updatePaymentStatus(orderId, orderData.payment.id, crmStatus, order.site);
 
             await feedRepository.saveStatusHistory({
@@ -1181,6 +1209,13 @@ class CreditService {
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
             await easycredit.cancelRequest(orderData.loanApplicationId);
         } else if (creditCompany === CREDIT_COMPANY_IUTE) {
+            const feedItem = await feedRepository.getApplicationByApplicationId(orderData.loanApplicationId);
+            const currentStatus = feedItem?.bankStatus;
+
+            if (currentStatus !== 'PAID') {
+                throw new Error('Отмена заявки Iute возможна только для статуса PAID (в течение 14 дней). Для других статусов клиент должен отменить заявку в приложении MyIute.');
+            }
+
             await iute.withdrawOrder(orderData.loanApplicationId);
         } else {
             await microinvest.sendRefuseRequest(orderData.loanApplicationId, reason);
