@@ -25,20 +25,12 @@ class SimlaClient {
         try {
             const response = await this.client.get(`/orders/${orderId}?${this.buildParams({ by: 'id' })}`);
             const order = response.data?.order;
-            if (order) {
-                const combinedFields = Object.keys(order).filter(k =>
-                    k.toLowerCase().includes('combined') ||
-                    k.toLowerCase().includes('linked') ||
-                    k.toLowerCase().includes('merged') ||
-                    k.toLowerCase().includes('parent') ||
-                    k.toLowerCase().includes('source')
-                );
-                if (combinedFields.length > 0) {
-                    logger.info('Order combined/linked fields found', {
-                        orderId,
-                        fields: combinedFields.reduce((acc, k) => ({ ...acc, [k]: order[k] }), {})
-                    });
-                }
+            if (order && (orderId === 1206815 || orderId === '1206815')) {
+                logger.info('DEBUG Order 1206815 all keys', {
+                    keys: Object.keys(order),
+                    contragent: order.contragent,
+                    contragentType: order.contragentType
+                });
             }
             return order;
         } catch (error) {
