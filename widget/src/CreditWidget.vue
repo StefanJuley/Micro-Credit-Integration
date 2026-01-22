@@ -1550,6 +1550,8 @@ async function loadFeed() {
       feedItems.value = items;
       const filtered = filterFeedItems(items, feedStatusFilter.value, feedCompanyFilter.value, feedManagerFilter.value, feedSearchQuery.value);
       displayedFeedItems.value = [...filtered];
+      const defaultManagerId = currentUserId.value ? String(currentUserId.value) : '';
+      hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedManagerFilter.value !== defaultManagerId || feedSearchQuery.value !== '';
     }
   } catch (err: any) {
     console.error('Failed to load feed:', err);
@@ -1560,11 +1562,6 @@ async function loadFeed() {
 
 function toggleArchiveView() {
   isArchiveView.value = !isArchiveView.value;
-  feedStatusFilter.value = '';
-  feedCompanyFilter.value = '';
-  feedManagerFilter.value = currentUserId.value ? String(currentUserId.value) : '';
-  feedSearchQuery.value = '';
-  hasActiveFilters.value = false;
   loadFeed();
 }
 
