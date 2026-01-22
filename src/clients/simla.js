@@ -24,7 +24,23 @@ class SimlaClient {
     async getOrder(orderId) {
         try {
             const response = await this.client.get(`/orders/${orderId}?${this.buildParams({ by: 'id' })}`);
-            return response.data?.order;
+            const order = response.data?.order;
+            if (order) {
+                const combinedFields = Object.keys(order).filter(k =>
+                    k.toLowerCase().includes('combined') ||
+                    k.toLowerCase().includes('linked') ||
+                    k.toLowerCase().includes('merged') ||
+                    k.toLowerCase().includes('parent') ||
+                    k.toLowerCase().includes('source')
+                );
+                if (combinedFields.length > 0) {
+                    logger.info('Order combined/linked fields found', {
+                        orderId,
+                        fields: combinedFields.reduce((acc, k) => ({ ...acc, [k]: order[k] }), {})
+                    });
+                }
+            }
+            return order;
         } catch (error) {
             logger.error('getOrder failed', { orderId, error: error.message });
             throw error;
