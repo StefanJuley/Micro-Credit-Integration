@@ -1056,10 +1056,24 @@ class CreditService {
                         });
                     }
                 } catch (error) {
-                    logger.warn('Failed to update stale item', {
-                        orderId: staleItem.orderId,
-                        error: error.message
-                    });
+                    const isNotFound = error.response?.status === 404;
+
+                    if (isNotFound) {
+                        await feedRepository.upsertFeedItem({
+                            ...staleItem,
+                            orderStatus: 'delivered',
+                        });
+                        logger.info('Order not found (possibly combined/deleted), moved to archive', {
+                            orderId: staleItem.orderId,
+                            orderNumber: staleItem.orderNumber,
+                            applicationId: staleItem.applicationId
+                        });
+                    } else {
+                        logger.warn('Failed to update stale item', {
+                            orderId: staleItem.orderId,
+                            error: error.message
+                        });
+                    }
                 }
             }
 
