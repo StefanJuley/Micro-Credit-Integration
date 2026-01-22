@@ -346,6 +346,10 @@ class CreditService {
     }
 
     async _submitEasyCreditApplication(orderId, order, orderData, files, managerData = {}) {
+        if (files.length === 0) {
+            throw new Error(`Необходимо прикрепить фото паспорта к заказу`);
+        }
+
         const productId = this.getEasyCreditProductId(parseInt(orderData.creditTerm) || 6);
         const firstInstallmentDate = easycredit.calculateFirstInstallmentDate(20);
 
