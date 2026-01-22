@@ -20,6 +20,30 @@
       </div>
 
       <div v-else class="mi-details">
+        <div v-if="hasMultipleApplications" class="mi-applications-selector">
+          <span class="mi-selector-label">Заявка:</span>
+          <div class="mi-custom-dropdown">
+            <div
+              class="mi-dropdown-trigger"
+              @click="applicationsDropdownOpen = !applicationsDropdownOpen"
+            >
+              <span>{{ selectedApplicationLabel }}</span>
+              <span class="mi-dropdown-arrow">{{ applicationsDropdownOpen ? '\u25B2' : '\u25BC' }}</span>
+            </div>
+            <div v-if="applicationsDropdownOpen" class="mi-dropdown-menu">
+              <div
+                v-for="option in applicationOptions"
+                :key="option.value"
+                :class="['mi-dropdown-item', { 'mi-dropdown-item-selected': option.value === selectedApplicationId, 'mi-dropdown-item-active': option.isActive }]"
+                @click="selectApplication(option.value)"
+              >
+                <span class="mi-dropdown-item-label">{{ option.label }}</span>
+                <span class="mi-dropdown-item-date">{{ option.sublabel }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="applicationId" class="mi-section">
           <div class="mi-row">
             <span class="mi-label">ID заявки:</span>
@@ -111,7 +135,7 @@
             </UiButton>
 
             <UiButton
-              v-if="applicationId"
+              v-if="applicationId && !isIute"
               :loading="sendingFiles"
               :disabled="sendingFiles"
               appearance="secondary"
@@ -195,7 +219,7 @@
           <button class="mi-close-request-data" @click="requestData = null">Скрыть</button>
         </div>
 
-        <div v-if="applicationId" class="mi-messages-section">
+        <div v-if="applicationId && !isIute" class="mi-messages-section">
           <h4 class="mi-section-title">Сообщения</h4>
           <div class="mi-messages-list">
             <div v-if="messagesLoading" class="mi-messages-loading">
@@ -612,6 +636,9 @@ const showCancelDialog = ref(false);
 const cancelReason = ref('');
 const requestData = ref<any>(null);
 const selectedCompany = ref('microinvest');
+const orderApplications = ref<any[]>([]);
+const selectedApplicationId = ref<string | null>(null);
+const applicationsDropdownOpen = ref(false);
 
 const isEasyCredit = computed(() => {
   return comparisonData.value?.creditCompany === 'easycredit';
@@ -639,6 +666,34 @@ const getComparisonTitle = computed(() => {
 const canSendMessage = computed(() => {
   if (isEasyCredit.value) return false;
   return newMessage.value.trim().length > 0 && !sendingMessage.value;
+});
+
+const hasMultipleApplications = computed(() => {
+  return orderApplications.value.length > 1;
+});
+
+const selectedApplicationLabel = computed(() => {
+  const app = orderApplications.value.find(a => a.applicationId === selectedApplicationId.value);
+  if (!app) return '';
+  const company = getCreditCompanyName(app.creditCompany);
+  const status = getStatusText(app.bankStatus);
+  const active = app.isActive ? ' (активная)' : '';
+  return `${company} - ${status}${active}`;
+});
+
+const applicationOptions = computed(() => {
+  return orderApplications.value.map(app => {
+    const company = getCreditCompanyName(app.creditCompany);
+    const status = getStatusText(app.bankStatus);
+    const date = new Date(app.createdAt).toLocaleDateString('ru-RU');
+    const active = app.isActive ? ' (активная)' : '';
+    return {
+      value: app.applicationId,
+      label: `${company} - ${status}${active}`,
+      sublabel: date,
+      isActive: app.isActive
+    };
+  });
 });
 
 const currentUserDisplayName = computed(() => {
@@ -795,6 +850,7 @@ watch(showFeedModal, (opened) => {
 });
 
 const canCancel = computed(() => {
+  if (isIute.value) return false;
   const status = comparisonData.value?.bankStatus;
   if (!status) return false;
   const uncancelableStatuses = [
@@ -850,8 +906,57 @@ async function handleDetails() {
   modalOpened.value = true;
   historyExpanded.value = false;
   statusHistory.value = [];
+  await loadOrderApplications();
   await loadComparisonData();
   await loadMessages();
+}
+
+async function loadOrderApplications() {
+  if (!orderId.value) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/order-applications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: orderId.value }),
+    });
+
+    const data = await response.json();
+
+    if (data.success && data.applications) {
+      orderApplications.value = data.applications;
+      if (data.applications.length > 0) {
+        const activeApp = data.applications.find((app: any) => app.isActive);
+        selectedApplicationId.value = activeApp?.applicationId || data.applications[0].applicationId;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load order applications', err);
+  }
+}
+
+async function selectApplication(appId: string) {
+  selectedApplicationId.value = appId;
+  applicationsDropdownOpen.value = false;
+
+  const app = orderApplications.value.find(a => a.applicationId === appId);
+  if (app) {
+    applicationId.value = app.applicationId;
+    comparisonData.value = {
+      ...comparisonData.value,
+      applicationId: app.applicationId,
+      creditCompany: app.creditCompany,
+      bankStatus: app.bankStatus,
+      crmStatus: app.crmStatus,
+      customerName: app.customerName
+    };
+
+    if (app.isActive) {
+      await loadComparisonData();
+    }
+
+    await loadMessages();
+  }
 }
 
 function closeModal() {
@@ -2667,5 +2772,102 @@ async function moveToDelivering(item: any) {
     color: #2563eb;
     font-weight: 500;
   }
+}
+
+.mi-applications-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.mi-selector-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.mi-applications-selector .mi-custom-dropdown {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.mi-applications-selector .mi-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mi-applications-selector .mi-dropdown-trigger:hover {
+  border-color: #9ca3af;
+}
+
+.mi-applications-selector .mi-dropdown-arrow {
+  font-size: 10px;
+  color: #6b7280;
+  margin-left: 8px;
+}
+
+.mi-applications-selector .mi-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.mi-applications-selector .mi-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mi-applications-selector .mi-dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.mi-applications-selector .mi-dropdown-item-selected {
+  background: #eff6ff;
+}
+
+.mi-applications-selector .mi-dropdown-item-active {
+  border-left: 3px solid #22c55e;
+}
+
+.mi-applications-selector .mi-dropdown-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.mi-applications-selector .mi-dropdown-item-date {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
 }
 </style>

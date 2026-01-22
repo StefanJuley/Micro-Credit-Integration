@@ -351,6 +351,25 @@ app.post('/api/status-history', async (req, res) => {
     }
 });
 
+app.post('/api/order-applications', async (req, res) => {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+        return res.status(400).json({ success: false, error: 'orderId is required' });
+    }
+
+    try {
+        const result = await creditService.getOrderApplications(orderId);
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to get order applications', { orderId, error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 app.get('/api/feed', async (req, res) => {
     try {
         const filters = {};

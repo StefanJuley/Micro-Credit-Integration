@@ -90,3 +90,22 @@ model StatusHistory {
   @@index([applicationId, createdAt])
   @@map("status_history")
 }
+
+model OrderApplication {
+  id            Int       @id @default(autoincrement())
+  orderId       Int
+  orderNumber   String
+  applicationId String    @unique
+  creditCompany String
+  bankStatus    String?
+  crmStatus     String?
+  customerName  String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  archivedAt    DateTime?
+
+  @@index([orderId])
+  @@index([isActive])
+  @@index([orderId, isActive])
+  @@map("order_applications")
+}

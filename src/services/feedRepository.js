@@ -249,10 +249,14 @@ class FeedRepository {
                 updateData.crmStatus = crmStatus;
             }
 
-            return await prisma.feedItem.updateMany({
+            await prisma.feedItem.updateMany({
                 where: { applicationId },
                 data: updateData
             });
+
+            await this.updateOrderApplicationStatus(applicationId, bankStatus, crmStatus);
+
+            return { success: true };
         } catch (error) {
             logger.error('Failed to update application status', {
                 applicationId,
@@ -286,6 +290,124 @@ class FeedRepository {
 
     async disconnect() {
         await prisma.$disconnect();
+    }
+
+    async createOrderApplication(data) {
+        try {
+            return await prisma.orderApplication.create({
+                data: {
+                    orderId: data.orderId,
+                    orderNumber: data.orderNumber,
+                    applicationId: data.applicationId,
+                    creditCompany: data.creditCompany,
+                    bankStatus: data.bankStatus || null,
+                    crmStatus: data.crmStatus || null,
+                    customerName: data.customerName || null,
+                    isActive: true
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to create order application', {
+                orderId: data.orderId,
+                applicationId: data.applicationId,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    async archiveOrderApplication(applicationId) {
+        try {
+            return await prisma.orderApplication.update({
+                where: { applicationId },
+                data: {
+                    isActive: false,
+                    archivedAt: new Date()
+                }
+            });
+        } catch (error) {
+            if (error.code === 'P2025') {
+                return null;
+            }
+            logger.error('Failed to archive order application', {
+                applicationId,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    async archiveActiveApplicationsByOrderId(orderId) {
+        try {
+            return await prisma.orderApplication.updateMany({
+                where: {
+                    orderId,
+                    isActive: true
+                },
+                data: {
+                    isActive: false,
+                    archivedAt: new Date()
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to archive active applications by orderId', {
+                orderId,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    async getActiveApplicationByOrderId(orderId) {
+        return await prisma.orderApplication.findFirst({
+            where: {
+                orderId,
+                isActive: true
+            }
+        });
+    }
+
+    async getAllApplicationsByOrderId(orderId) {
+        return await prisma.orderApplication.findMany({
+            where: { orderId },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async getOrderApplicationByApplicationId(applicationId) {
+        return await prisma.orderApplication.findUnique({
+            where: { applicationId }
+        });
+    }
+
+    async updateOrderApplicationStatus(applicationId, bankStatus, crmStatus = null) {
+        try {
+            const updateData = {};
+            if (bankStatus !== undefined) updateData.bankStatus = bankStatus;
+            if (crmStatus !== undefined) updateData.crmStatus = crmStatus;
+
+            return await prisma.orderApplication.update({
+                where: { applicationId },
+                data: updateData
+            });
+        } catch (error) {
+            if (error.code === 'P2025') {
+                return null;
+            }
+            logger.error('Failed to update order application status', {
+                applicationId,
+                bankStatus,
+                crmStatus,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    async getActiveApplicationsCount() {
+        return await prisma.orderApplication.count({
+            where: { isActive: true }
+        });
     }
 }
 

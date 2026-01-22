@@ -42,6 +42,40 @@ class CreditService {
         return descriptions[status] || status;
     }
 
+    isFinalStatus(bankStatus, creditCompany) {
+        if (!bankStatus) return false;
+
+        if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
+            return config.easyCreditFinalStatuses.includes(bankStatus);
+        }
+        if (creditCompany === CREDIT_COMPANY_IUTE) {
+            return config.iuteFinalStatuses.includes(bankStatus);
+        }
+        return config.finalStatuses.includes(bankStatus);
+    }
+
+    async checkCanSubmitNewApplication(orderId) {
+        const activeApp = await feedRepository.getActiveApplicationByOrderId(orderId);
+
+        if (!activeApp) {
+            return { canSubmit: true };
+        }
+
+        const isFinal = this.isFinalStatus(activeApp.bankStatus, activeApp.creditCompany);
+
+        if (!isFinal) {
+            return {
+                canSubmit: false,
+                reason: `Дождитесь ответа по текущей заявке (${activeApp.creditCompany}: ${activeApp.bankStatus || 'в обработке'})`
+            };
+        }
+
+        return {
+            canSubmit: true,
+            activeApp
+        };
+    }
+
     formatBirthday(birthday) {
         if (!birthday) return null;
         if (birthday.match(/^\d{4}-\d{2}-\d{2}$/)) return birthday;
@@ -162,8 +196,19 @@ class CreditService {
             throw new Error(`Order ${orderId} has unknown credit company: ${creditCompany}`);
         }
 
-        if (orderData.loanApplicationId) {
-            throw new Error(`Order ${orderId} already has application ID: ${orderData.loanApplicationId}`);
+        const canSubmitCheck = await this.checkCanSubmitNewApplication(orderId);
+        if (!canSubmitCheck.canSubmit) {
+            throw new Error(canSubmitCheck.reason);
+        }
+
+        if (canSubmitCheck.activeApp) {
+            logger.info('Archiving previous application before submitting new one', {
+                orderId,
+                previousApplicationId: canSubmitCheck.activeApp.applicationId,
+                previousCompany: canSubmitCheck.activeApp.creditCompany,
+                previousStatus: canSubmitCheck.activeApp.bankStatus
+            });
+            await feedRepository.archiveActiveApplicationsByOrderId(orderId);
         }
 
         if (!orderData.idnp) {
@@ -269,6 +314,15 @@ class CreditService {
                 filesCount: files.length,
                 fileNames: files.map(f => f.name)
             });
+
+            await feedRepository.createOrderApplication({
+                orderId,
+                orderNumber: orderData.orderNumber,
+                applicationId: result.applicationID,
+                creditCompany: CREDIT_COMPANY_MICROINVEST,
+                bankStatus: 'Placed',
+                customerName: `${orderData.name} ${orderData.surname}`.trim()
+            });
         } catch (saveError) {
             logger.error('Failed to save application request data', {
                 orderId,
@@ -363,6 +417,15 @@ class CreditService {
                 requestData: applicationData,
                 filesCount: files.length,
                 fileNames: files.map(f => f.name)
+            });
+
+            await feedRepository.createOrderApplication({
+                orderId,
+                orderNumber: orderData.orderNumber,
+                applicationId: urn,
+                creditCompany: CREDIT_COMPANY_EASYCREDIT,
+                bankStatus: 'New',
+                customerName: `${orderData.name} ${orderData.surname}`.trim()
             });
         } catch (saveError) {
             logger.error('Failed to save application request data', {
@@ -1207,16 +1270,17 @@ class CreditService {
         }
 
         if (creditCompany === CREDIT_COMPANY_EASYCREDIT) {
-            await easycredit.cancelRequest(orderData.loanApplicationId);
-        } else if (creditCompany === CREDIT_COMPANY_IUTE) {
-            const feedItem = await feedRepository.getApplicationByApplicationId(orderData.loanApplicationId);
-            const currentStatus = feedItem?.bankStatus;
+            const statusResponse = await easycredit.checkStatus(orderData.loanApplicationId);
+            const currentStatus = statusResponse?.RequestStatus;
+            const cancelableStatuses = ['New', 'More Data', 'Approved'];
 
-            if (currentStatus !== 'PAID') {
-                throw new Error('Отмена заявки Iute возможна только для статуса PAID (в течение 14 дней). Для других статусов клиент должен отменить заявку в приложении MyIute.');
+            if (!cancelableStatuses.includes(currentStatus)) {
+                throw new Error(`Отмена заявки EasyCredit невозможна. Текущий статус: ${currentStatus}. Отмена доступна только для статусов: New, More Data, Approved.`);
             }
 
-            await iute.withdrawOrder(orderData.loanApplicationId);
+            await easycredit.cancelRequest(orderData.loanApplicationId);
+        } else if (creditCompany === CREDIT_COMPANY_IUTE) {
+            throw new Error('Отмена заявки Iute Credit производится клиентом в приложении MyIute.');
         } else {
             await microinvest.sendRefuseRequest(orderData.loanApplicationId, reason);
         }
@@ -1566,6 +1630,26 @@ class CreditService {
         };
     }
 
+    async getOrderApplications(orderId) {
+        const applications = await feedRepository.getAllApplicationsByOrderId(orderId);
+
+        return {
+            orderId,
+            applications: applications.map(app => ({
+                id: app.id,
+                applicationId: app.applicationId,
+                creditCompany: app.creditCompany,
+                bankStatus: app.bankStatus,
+                crmStatus: app.crmStatus,
+                customerName: app.customerName,
+                isActive: app.isActive,
+                createdAt: app.createdAt,
+                archivedAt: app.archivedAt
+            })),
+            success: true
+        };
+    }
+
     getFileCleanupStatuses() {
         return [
             'complete',
@@ -1761,8 +1845,19 @@ class CreditService {
 
             const orderData = simla.extractOrderData(order);
 
-            if (orderData.loanApplicationId) {
-                throw new Error(`Заказ ${orderId} уже имеет заявку: ${orderData.loanApplicationId}`);
+            const canSubmitCheck = await this.checkCanSubmitNewApplication(orderId);
+            if (!canSubmitCheck.canSubmit) {
+                throw new Error(canSubmitCheck.reason);
+            }
+
+            if (canSubmitCheck.activeApp) {
+                logger.info('Archiving previous application before submitting Iute', {
+                    orderId,
+                    previousApplicationId: canSubmitCheck.activeApp.applicationId,
+                    previousCompany: canSubmitCheck.activeApp.creditCompany,
+                    previousStatus: canSubmitCheck.activeApp.bankStatus
+                });
+                await feedRepository.archiveActiveApplicationsByOrderId(orderId);
             }
 
             const finalAmount = amount || orderData.totalSumm || orderData.payment?.amount;
@@ -1843,6 +1938,15 @@ class CreditService {
                 },
                 filesCount: 0,
                 fileNames: []
+            });
+
+            await feedRepository.createOrderApplication({
+                orderId,
+                orderNumber: order.number,
+                applicationId: iuteOrderId,
+                creditCompany: CREDIT_COMPANY_IUTE,
+                bankStatus: result.status,
+                customerName: order.customer?.firstName ? `${order.customer.firstName} ${order.customer.lastName || ''}`.trim() : null
             });
 
             await feedRepository.saveStatusHistory({
