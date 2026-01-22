@@ -333,8 +333,18 @@ class CreditService {
 
         logger.info('Microinvest application submitted successfully', {
             orderId,
+            orderNumber: orderData.orderNumber,
             applicationId: result.applicationID,
-            filesCount: files.length
+            customer: `${orderData.name} ${orderData.surname}`,
+            idnp: orderData.idnp,
+            amount: applicationData.amount,
+            term: applicationData.loanTerm,
+            productId: applicationData.loanProductID,
+            productName: this.getProductName(applicationData.loanProductID),
+            filesCount: files.length,
+            fileNames: files.map(f => f.name),
+            managerId: managerData.managerId,
+            managerName: managerData.managerName
         });
 
         return {
@@ -624,9 +634,22 @@ class CreditService {
             const hasChanges = this.checkConditionsChanged(orderData, bankStatus);
             if (hasChanges) {
                 crmStatus = 'conditions-changed';
+                const requestedProductId = this.getLoanProductId(orderData.zeroCredit, orderData.creditTerm);
                 logger.info('Bank changed credit conditions', {
                     orderId,
-                    applicationId: orderData.loanApplicationId
+                    applicationId: orderData.loanApplicationId,
+                    requested: {
+                        amount: parseFloat(orderData.payment?.amount) || 0,
+                        term: parseInt(orderData.creditTerm) || 0,
+                        productId: requestedProductId,
+                        productName: this.getProductName(requestedProductId)
+                    },
+                    approved: {
+                        amount: bankStatus.amount,
+                        term: bankStatus.loanTerm,
+                        productId: bankStatus.loanProductID,
+                        productName: this.getProductName(bankStatus.loanProductID)
+                    }
                 });
             }
         }
@@ -826,11 +849,15 @@ class CreditService {
                 });
             }
         } catch (error) {
-            logger.error('Auto-attach contracts failed', {
-                orderId,
-                applicationId,
-                error: error.message
-            });
+            if (error.response?.status === 404) {
+                logger.debug('Contracts not available yet for auto-attach', { orderId, applicationId });
+            } else {
+                logger.error('Auto-attach contracts failed', {
+                    orderId,
+                    applicationId,
+                    error: error.message
+                });
+            }
         }
     }
 

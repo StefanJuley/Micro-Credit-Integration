@@ -47,19 +47,24 @@ class MicroinvestClient {
 
     async importLoanApplication(applicationData) {
         try {
-            logger.info('Importing loan application', {
+            logger.info('Microinvest ImportLoanApplication request', {
                 idnp: applicationData.idnp,
+                name: applicationData.name,
+                surname: applicationData.surname,
                 amount: applicationData.amount,
-                loanTerm: applicationData.loanTerm
+                loanTerm: applicationData.loanTerm,
+                loanProductID: applicationData.loanProductID,
+                filesCount: applicationData.fileAttachmentSet?.length || 0,
+                comment: applicationData.comment
             });
 
             const response = await this.client.post('/ImportLoanApplication', applicationData);
 
-            if (response.data?.applicationID) {
-                logger.info('Loan application created', {
-                    applicationID: response.data.applicationID
-                });
-            }
+            logger.info('Microinvest ImportLoanApplication response', {
+                applicationID: response.data?.applicationID,
+                status: response.data?.status,
+                success: !!response.data?.applicationID
+            });
 
             return response.data;
         } catch (error) {
@@ -81,12 +86,18 @@ class MicroinvestClient {
                 }
             });
 
-            logger.debug('CheckApplicationStatus response', {
-                applicationId,
-                status: response.data?.status
-            });
+            const data = response.data;
+            if (data) {
+                logger.debug('Microinvest CheckApplicationStatus', {
+                    applicationId,
+                    status: data.status,
+                    amount: data.amount,
+                    loanTerm: data.loanTerm,
+                    loanProductID: data.loanProductID
+                });
+            }
 
-            return response.data;
+            return data;
         } catch (error) {
             if (error.response?.status === 404) {
                 logger.warn('Application not found (may still be processing)', { applicationId });
@@ -109,14 +120,22 @@ class MicroinvestClient {
                 }
             });
 
-            logger.debug('GetContracts response', {
-                applicationId,
-                filesCount: response.data?.fileAttachmentSet?.length
-            });
+            const filesCount = response.data?.fileAttachmentSet?.length || 0;
+            if (filesCount > 0) {
+                logger.info('Microinvest GetContracts success', {
+                    applicationId,
+                    filesCount,
+                    fileNames: response.data.fileAttachmentSet.map(f => f.name)
+                });
+            }
 
             return response.data;
         } catch (error) {
-            logger.error('GetContracts failed', { applicationId, error: error.message });
+            if (error.response?.status === 404) {
+                logger.debug('Contracts not ready yet', { applicationId });
+            } else {
+                logger.error('GetContracts failed', { applicationId, error: error.message });
+            }
             throw error;
         }
     }
@@ -146,6 +165,12 @@ class MicroinvestClient {
 
     async sendContracts(applicationId, files) {
         try {
+            logger.info('Microinvest SendContracts request', {
+                applicationId,
+                filesCount: files.length,
+                fileNames: files.map(f => f.name)
+            });
+
             const fileAttachmentSet = files.map(file => ({
                 name: file.name,
                 data: file.data
@@ -162,9 +187,10 @@ class MicroinvestClient {
                 }
             );
 
-            logger.info('SendContracts success', {
+            logger.info('Microinvest SendContracts success', {
                 applicationId,
-                filesCount: files.length
+                filesCount: files.length,
+                response: response.data
             });
             return response.data;
         } catch (error) {
