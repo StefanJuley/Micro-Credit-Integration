@@ -1105,6 +1105,7 @@ class CreditService {
                 crmStatus: item.crmStatus,
                 paymentType: item.paymentType,
                 orderStatus: item.orderStatus,
+                orderStatusLabel: config.orderStatusLabels[item.orderStatus] || item.orderStatus,
                 managerId: item.managerId,
                 managerName: item.managerName,
                 conditionsChanged: item.conditionsChanged,

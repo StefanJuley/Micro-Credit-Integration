@@ -80,6 +80,10 @@ module.exports = {
     easyCreditFinalStatuses: ['Refused', 'Rejected', 'Canceled', 'Disbursed', 'Settled'],
     iuteFinalStatuses: ['PAID', 'CANCELLED'],
 
+    orderStatusLabels: {
+        'order-deleted': 'Удален или объединен'
+    },
+
     crmFields: {
         idnp: 'indp',
         name: 'name',
