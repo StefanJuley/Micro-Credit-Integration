@@ -15,7 +15,8 @@ const ARCHIVED_ORDER_STATUSES = [
     'prices-did-not-suit',
     'cancel-other',
     'purchase-return',
-    'ne-zabral-zakaz'
+    'ne-zabral-zakaz',
+    'order-deleted'
 ];
 
 class FeedRepository {

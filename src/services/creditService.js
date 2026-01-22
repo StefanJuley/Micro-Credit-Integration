@@ -1061,9 +1061,9 @@ class CreditService {
                     if (isNotFound) {
                         await feedRepository.upsertFeedItem({
                             ...staleItem,
-                            orderStatus: 'delivered',
+                            orderStatus: 'order-deleted',
                         });
-                        logger.info('Order not found (possibly combined/deleted), moved to archive', {
+                        logger.info('Order not found (combined/deleted), moved to archive', {
                             orderId: staleItem.orderId,
                             orderNumber: staleItem.orderNumber,
                             applicationId: staleItem.applicationId
