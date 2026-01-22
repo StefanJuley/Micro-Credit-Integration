@@ -413,7 +413,7 @@
           <div class="mi-search-wrapper" @keydown="onSearchKeydown">
             <UiTextbox
               :value="feedSearchQuery"
-              placeholder="Поиск (Enter)..."
+              placeholder="Поиск..."
               size="sm"
               @update:value="updateSearchQuery"
             />
@@ -600,6 +600,14 @@ const vClickOutside: Directive = {
 };
 
 const API_BASE = 'https://credit.pandashop.md';
+
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+}
 
 const order = useOrder();
 const orderId = useField(order, 'id');
@@ -821,6 +829,8 @@ function applyFilters() {
   const defaultManagerId = currentUserId.value ? String(currentUserId.value) : '';
   hasActiveFilters.value = feedStatusFilter.value !== '' || feedCompanyFilter.value !== '' || feedManagerFilter.value !== defaultManagerId || feedSearchQuery.value !== '';
 }
+
+const debouncedApplyFilters = debounce(applyFilters, 300);
 
 function resetFilters() {
   feedStatusFilter.value = '';
@@ -1338,6 +1348,7 @@ function updateNewMessage(val: string | number) {
 
 function updateSearchQuery(val: string | number) {
   feedSearchQuery.value = String(val);
+  debouncedApplyFilters();
 }
 
 async function sendMessageToBank() {
