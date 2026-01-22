@@ -24,15 +24,7 @@ class SimlaClient {
     async getOrder(orderId) {
         try {
             const response = await this.client.get(`/orders/${orderId}?${this.buildParams({ by: 'id' })}`);
-            const order = response.data?.order;
-            if (order && (orderId === 1206815 || orderId === '1206815')) {
-                logger.info('DEBUG Order 1206815 all keys', {
-                    keys: Object.keys(order),
-                    contragent: order.contragent,
-                    contragentType: order.contragentType
-                });
-            }
-            return order;
+            return response.data?.order;
         } catch (error) {
             logger.error('getOrder failed', { orderId, error: error.message });
             throw error;

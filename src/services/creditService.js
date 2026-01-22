@@ -1749,11 +1749,45 @@ class CreditService {
 
             let processed = 0;
             let saved = 0;
+            let combined = 0;
             let maxId = sinceId || 0;
 
             for (const change of history) {
                 if (change.id > maxId) {
                     maxId = change.id;
+                }
+
+                if (change.combinedTo) {
+                    const orderId = change.order?.id;
+                    const targetOrderId = change.combinedTo.id;
+
+                    if (orderId && targetOrderId) {
+                        try {
+                            const targetOrder = await simla.getOrder(targetOrderId);
+                            const targetStatus = targetOrder?.status;
+
+                            if (targetStatus) {
+                                await feedRepository.updateFeedItemOrderStatus(orderId, targetStatus);
+
+                                logger.info('Order combined, feed item status updated', {
+                                    orderId,
+                                    orderNumber: change.order?.number,
+                                    combinedToOrderId: targetOrderId,
+                                    combinedToNumber: change.combinedTo.externalId,
+                                    targetOrderStatus: targetStatus,
+                                    isArchived: ARCHIVED_ORDER_STATUSES.includes(targetStatus)
+                                });
+                                combined++;
+                            }
+                        } catch (err) {
+                            logger.error('Failed to handle combined order', {
+                                orderId,
+                                targetOrderId,
+                                error: err.message
+                            });
+                        }
+                    }
+                    continue;
                 }
 
                 if (change.source !== 'user') {
@@ -1817,14 +1851,14 @@ class CreditService {
                 await feedRepository.saveSyncMetadata('lastHistoryId', String(maxId));
             }
 
-            if (saved > 0) {
-                logger.info('CRM history sync completed', { processed, saved });
+            if (saved > 0 || combined > 0) {
+                logger.info('CRM history sync completed', { processed, saved, combined });
             }
 
-            return { processed, saved };
+            return { processed, saved, combined };
         } catch (error) {
             logger.error('syncCrmHistory failed', { error: error.message });
-            return { processed: 0, saved: 0, error: error.message };
+            return { processed: 0, saved: 0, combined: 0, error: error.message };
         }
     }
 

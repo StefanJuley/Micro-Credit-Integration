@@ -125,6 +125,25 @@ class FeedRepository {
         }
     }
 
+    async updateFeedItemOrderStatus(orderId, orderStatus) {
+        try {
+            return await prisma.feedItem.update({
+                where: { orderId },
+                data: { orderStatus }
+            });
+        } catch (error) {
+            if (error.code === 'P2025') {
+                return null;
+            }
+            logger.error('Failed to update feed item order status', {
+                orderId,
+                orderStatus,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
     async deleteByStatus(statuses) {
         return await prisma.feedItem.deleteMany({
             where: {
