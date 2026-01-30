@@ -139,13 +139,15 @@ class CreditService {
         return await this.submitApplication(orderId, managerData);
     }
 
-    getEasyCreditProductId(term) {
-        if (term >= 6 && term <= 11) return 54;
-        if (term === 12) return 55;
-        if (term >= 13 && term <= 18) return 56;
-        if (term >= 19 && term <= 24) return 57;
-        if (term >= 25 && term <= 36) return 58;
-        return 54;
+    getEasyCreditProductId(term, isZeroCredit = false) {
+        if (isZeroCredit) {
+            if (term === 3) return 1331;
+            if (term === 6) return 801;
+            if (term === 8) return 4745;
+            if (term === 10) return 1332;
+            return 801;
+        }
+        return 4744;
     }
 
     getGoodsNameFromOrder(order) {
@@ -360,7 +362,8 @@ class CreditService {
             throw new Error(`Необходимо прикрепить фото паспорта к заказу`);
         }
 
-        const productId = this.getEasyCreditProductId(parseInt(orderData.creditTerm) || 6);
+        const isZeroCredit = orderData.zeroCredit === 'да' || orderData.zeroCredit === true;
+        const productId = this.getEasyCreditProductId(parseInt(orderData.creditTerm) || 6, isZeroCredit);
         const firstInstallmentDate = easycredit.calculateFirstInstallmentDate(20);
 
         const applicationData = {
